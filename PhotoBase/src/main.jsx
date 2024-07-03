@@ -6,6 +6,7 @@ import './index.css';
 // Pages
 import Login from './Login';
 import Register from './Register';
+import GalleryPage from './GaleryPage';  // Importa la página de la galería
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/gallery" element={<GalleryPage />} />  
       </Routes>
     </Router>
   </React.StrictMode>
