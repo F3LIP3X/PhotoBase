@@ -1,4 +1,4 @@
-// src/GalleryPage.jsx
+// GalleryPage.jsx
 import React from 'react';
 import Sidebar from './Components/Sidebar';
 import GalleryHeader from './Components/GalleryHeader';
