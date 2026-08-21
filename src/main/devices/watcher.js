@@ -3,12 +3,11 @@ import { detectDevices } from './detectors'
 const DEFAULT_INTERVAL_MS = 3000
 
 /* USB hotplug has no dependable cross-platform event without a native
-   module, so we poll. Two rules keep that cheap: never start a probe
-   while the previous one is still running, and only tell the renderer
-   when the set actually changed. */
+   module, so we poll. Two rules keep that cheap: never run two probes at
+   once, and only tell the renderer when the set actually changed. */
 export function createDeviceWatcher({ onChange, intervalMs = DEFAULT_INTERVAL_MS }) {
   let timer = null
-  let probing = false
+  let inFlight = null
   let signature = null
   let devices = []
 
@@ -18,20 +17,25 @@ export function createDeviceWatcher({ onChange, intervalMs = DEFAULT_INTERVAL_MS
       .sort()
       .join('|')
 
-  async function poll() {
-    if (probing) return
-    probing = true
-    try {
-      const next = await detectDevices()
-      const nextSignature = fingerprint(next)
-      if (nextSignature !== signature) {
-        signature = nextSignature
-        devices = next
-        onChange(next)
-      }
-    } finally {
-      probing = false
-    }
+  /* Callers share the running probe rather than starting a second one,
+     so a manual refresh during a tick still resolves with fresh data. */
+  function poll() {
+    inFlight ??= detectDevices()
+      .then((next) => {
+        const nextSignature = fingerprint(next)
+        if (nextSignature !== signature) {
+          signature = nextSignature
+          devices = next
+          onChange(next)
+        }
+        return devices
+      })
+      .catch(() => devices)
+      .finally(() => {
+        inFlight = null
+      })
+
+    return inFlight
   }
 
   return {
@@ -48,8 +52,13 @@ export function createDeviceWatcher({ onChange, intervalMs = DEFAULT_INTERVAL_MS
     /* The renderer asks for the current list on mount, before the next
        tick would have told it anything. */
     async current() {
-      if (signature === null) await poll()
+      if (signature === null) return poll()
       return devices
+    },
+    /* An explicit user request always re-probes, even if the set looks
+       unchanged — the point is to confirm, not to guess. */
+    refresh() {
+      return poll()
     },
   }
 }

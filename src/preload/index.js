@@ -8,6 +8,7 @@ const DEVICES_CHANNEL = 'devices:changed'
 const api = {
   devices: {
     list: () => ipcRenderer.invoke('devices:list'),
+    refresh: () => ipcRenderer.invoke('devices:refresh'),
 
     /* Returns its own unsubscribe so callers can clean up without
        reaching for removeListener and the exact handler identity. */

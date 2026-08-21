@@ -4,6 +4,7 @@ import {
   PiDeviceMobileFill,
   PiHardDriveFill,
   PiWarningFill,
+  PiArrowsClockwiseBold,
 } from 'react-icons/pi';
 import EmptyState from '../Components/EmptyState';
 import { useShell } from '../hooks/useShell';
@@ -14,7 +15,7 @@ import { useDevices } from '../hooks/useDevices';
    code must preserve that — the source is read-only, always. */
 const Devices = () => {
   const { setSubtitle } = useShell();
-  const { devices, ready, supported } = useDevices();
+  const { devices, ready, refreshing, refresh, supported } = useDevices();
 
   useEffect(() => {
     if (!ready) {
@@ -41,16 +42,19 @@ const Devices = () => {
       <EmptyState
         icon={PiUsbFill}
         title="Conecta tu teléfono por USB"
-        hint="Desbloquéalo y elige «Transferir archivos» cuando te lo pida. PhotoBase lo detectará solo y podrás copiar sus fotos a este equipo."
-      />
+        hint="Desbloquéalo y elige «Transferir archivos» cuando te lo pida. PhotoBase lo detectará solo, pero puedes forzar una búsqueda."
+      >
+        <RefreshButton onClick={refresh} busy={refreshing} />
+      </EmptyState>
     );
   }
 
   return (
     <div>
-      <div className="mb-3 flex items-baseline gap-3">
+      <div className="mb-3 flex items-center gap-3">
         <h2 className="eyebrow text-ink-3">Conectados ahora</h2>
         <span className="h-px flex-1 bg-[var(--glass-brd)]" />
+        <RefreshButton onClick={refresh} busy={refreshing} subtle />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -66,6 +70,22 @@ const Devices = () => {
     </div>
   );
 };
+
+const RefreshButton = ({ onClick, busy, subtle }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={busy}
+    className={
+      subtle
+        ? 'flex shrink-0 items-center gap-2 rounded-full border border-[var(--glass-brd)] px-4 py-1.5 text-[12px] font-medium text-ink-2 transition-colors duration-200 hover:border-accent hover:text-ink disabled:opacity-50'
+        : 'flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-[13px] font-semibold text-accent-ink transition-opacity duration-200 hover:opacity-90 disabled:opacity-50'
+    }
+  >
+    <PiArrowsClockwiseBold className={busy ? 'animate-spin' : undefined} />
+    {busy ? 'Buscando…' : 'Buscar de nuevo'}
+  </button>
+);
 
 const DeviceRow = ({ device }) => {
   const { name, kind, mountPath, readable } = device;
