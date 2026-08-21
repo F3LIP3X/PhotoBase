@@ -7,15 +7,35 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: 'var(--color-bg)',
-        ink: 'var(--color-ink)',
-        'ink-soft': 'var(--color-ink-soft)',
-        accent: 'var(--color-accent)',
-        'accent-soft': 'var(--color-accent-soft)',
+        bg: 'var(--bg)',
+        'bg-2': 'var(--bg-2)',
+        ink: 'var(--ink)',
+        'ink-2': 'var(--ink-2)',
+        'ink-3': 'var(--ink-3)',
+        accent: 'var(--accent)',
+        'accent-2': 'var(--accent-2)',
+        'accent-ink': 'var(--accent-ink)',
+        frame: 'var(--frame)',
+      },
+      borderRadius: {
+        sm: 'var(--r-sm)',
+        md: 'var(--r-md)',
+        lg: 'var(--r-lg)',
+        xl: 'var(--r-xl)',
+        full: 'var(--r-full)',
       },
       fontFamily: {
-        ui: 'var(--font-ui)',
+        sans: 'var(--font-sans)',
+        display: 'var(--font-display)',
         mono: 'var(--font-mono)',
+      },
+      boxShadow: {
+        sm: 'var(--shadow-sm)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
+      },
+      transitionTimingFunction: {
+        glass: 'var(--ease)',
       },
     },
   },
