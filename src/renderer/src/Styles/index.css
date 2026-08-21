@@ -1,3 +1,12 @@
+/* Fonts are bundled, not fetched: the app must work with no network. */
+@import '@fontsource/inter/300.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource-variable/inter-tight';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
 @import './Tokens/index.css';
 
 @tailwind base;
@@ -6,63 +15,167 @@
 
 @layer base {
   body {
-    font-family: var(--font-ui);
-    background: var(--color-bg);
-    color: var(--color-ink);
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background: var(--bg);
+    color-scheme: var(--scheme);
     overflow: hidden;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    font-weight: 700;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 8px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 28%, transparent);
   }
 }
 
 @layer components {
-  .ambient-backdrop {
-    position: fixed;
-    inset: -12%;
-    z-index: -2;
-    background-image: url('../assets/PB-Background.png');
-    background-size: cover;
-    background-position: center;
-    filter: blur(40px) saturate(0.25) brightness(0.9);
-    transform: scale(1.08);
-  }
-
-  .ambient-overlay {
+  /* ---------- Ambient background ---------- */
+  .ambient {
     position: fixed;
     inset: 0;
-    z-index: -1;
-    background: var(--scrim);
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: radial-gradient(120% 90% at 50% -10%, var(--bg-2) 0%, var(--bg) 60%);
   }
 
+  .ambient::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: radial-gradient(90% 70% at 50% 20%, #000 0%, transparent 75%);
+    mask-image: radial-gradient(90% 70% at 50% 20%, #000 0%, transparent 75%);
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: var(--orb-op);
+    will-change: transform;
+    animation: drift 26s var(--ease) infinite alternate;
+  }
+
+  .orb-1 {
+    width: 46vw;
+    height: 46vw;
+    background: var(--orb-1);
+    top: -14vw;
+    left: -10vw;
+  }
+
+  .orb-2 {
+    width: 40vw;
+    height: 40vw;
+    background: var(--orb-2);
+    bottom: -16vw;
+    right: -12vw;
+    animation-duration: 32s;
+    animation-delay: -6s;
+  }
+
+  .orb-3 {
+    width: 30vw;
+    height: 30vw;
+    background: var(--orb-1);
+    top: 40vh;
+    right: 22vw;
+    animation-duration: 38s;
+    animation-delay: -12s;
+  }
+
+  /* ---------- Glass primitive ---------- */
   .glass {
-    background: var(--glass-fill);
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-    box-shadow: var(--glass-shadow), var(--glass-highlight);
+    position: relative;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-brd);
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(180%);
+    backdrop-filter: blur(var(--blur)) saturate(180%);
+    box-shadow: var(--shadow-md);
   }
 
   .glass-strong {
-    background: var(--glass-fill-strong);
-    border: 1px solid var(--glass-border-strong);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-    box-shadow: var(--glass-shadow), var(--glass-highlight);
+    background: var(--glass-bg-strong);
   }
 
-  .text-meta {
+  /* specular top edge — the Apple "liquid glass" tell */
+  .glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      160deg,
+      var(--glass-hi),
+      transparent 42%,
+      transparent 60%,
+      var(--glass-brd-2)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* ---------- Controls ---------- */
+  .control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--r-full);
+    color: var(--ink-3);
+    transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
+  }
+
+  .control:hover {
+    background: var(--glass-bg-strong);
+    color: var(--ink);
+  }
+
+  /* ---------- Type roles ---------- */
+  .eyebrow {
     font-family: var(--font-mono);
-    letter-spacing: 0.04em;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    font-size: 0.7rem;
   }
 
   .scroll-thin {
     scrollbar-width: thin;
-    scrollbar-color: var(--glass-border-strong) transparent;
+    scrollbar-color: var(--ink-3) transparent;
   }
 
   .scroll-thin::-webkit-scrollbar {
-    width: 8px;
+    width: 10px;
   }
 
   .scroll-thin::-webkit-scrollbar-track {
@@ -70,7 +183,38 @@
   }
 
   .scroll-thin::-webkit-scrollbar-thumb {
-    background-color: var(--glass-border-strong);
-    border-radius: var(--radius-pill);
+    background-color: var(--glass-brd);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: var(--r-full);
+  }
+}
+
+@keyframes drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4vw, -5vh, 0) scale(1.12);
+  }
+  100% {
+    transform: translate3d(-3vw, 6vh, 0) scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Fallback when backdrop-filter is unsupported */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--glass-bg-strong);
   }
 }

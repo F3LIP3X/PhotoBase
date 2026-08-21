@@ -1,55 +1,87 @@
+/* =========================================================
+   PhotoBase — Liquid Glass UI
+   Tokens carried over from the Portfolio design system
+   (f3lip3x.github.io/Portfolio) so both read as one author.
+   The portfolio's --accent-3 (pink) is deliberately dropped:
+   blue leads, indigo supports.
+   ========================================================= */
+
 :root {
-  /* Neutral palette — dark theme (default) */
-  --color-bg: #0b0b0d;
-  --color-ink: #f5f5f7;
-  --color-ink-soft: rgba(245, 245, 247, 0.6);
-  --color-accent: #d6336c;
-  --color-accent-soft: rgba(214, 51, 108, 0.16);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Inter Tight Variable', 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Glass surfaces */
-  --glass-fill: rgba(255, 255, 255, 0.06);
-  --glass-fill-strong: rgba(255, 255, 255, 0.12);
-  --glass-border: rgba(255, 255, 255, 0.14);
-  --glass-border-strong: rgba(255, 255, 255, 0.24);
-  --glass-blur: 28px;
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  --scrim: linear-gradient(
-    160deg,
-    rgba(5, 5, 6, 0.55) 0%,
-    rgba(20, 20, 22, 0.3) 45%,
-    rgba(2, 2, 3, 0.65) 100%
-  );
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 26px;
+  --r-xl: 34px;
+  --r-full: 999px;
 
-  /* Radii */
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-  --radius-pill: 999px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 0.5s;
 
-  /* Type */
-  --font-ui:
-    'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Inter',
-    system-ui, sans-serif;
-  --font-mono:
-    'Cascadia Code', 'SF Mono', ui-monospace, 'Consolas', monospace;
+  /* Light theme (macOS Sonoma-ish) */
+  --bg: #eef1f6;
+  --bg-2: #f7f9fc;
+  --ink: #0b0d12;
+  --ink-2: #40464f;
+  --ink-3: #6b727d;
+
+  --accent: #0a84ff;
+  --accent-2: #5e5ce6;
+  --accent-ink: #ffffff;
+
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.74);
+  --glass-brd: rgba(255, 255, 255, 0.75);
+  --glass-brd-2: rgba(10, 13, 20, 0.07);
+  --glass-hi: rgba(255, 255, 255, 0.9);
+
+  --shadow-sm: 0 1px 2px rgba(10, 13, 20, 0.05), 0 4px 14px rgba(10, 13, 20, 0.06);
+  --shadow-md: 0 2px 6px rgba(10, 13, 20, 0.06), 0 14px 40px rgba(10, 13, 20, 0.1);
+  --shadow-lg: 0 4px 12px rgba(10, 13, 20, 0.08), 0 30px 70px rgba(10, 13, 20, 0.16);
+
+  --blur: 26px;
+
+  /* Ambient field. Blue and indigo only. */
+  --orb-1: #7cc4ff;
+  --orb-2: #b79cff;
+  --orb-op: 0.55;
+  --grid-line: rgba(10, 13, 20, 0.05);
+
+  /* A frame with no photo in it yet */
+  --frame: rgba(10, 13, 20, 0.06);
+
+  --scheme: light;
 }
 
-:root[data-theme='light'] {
-  --color-bg: #f5f5f7;
-  --color-ink: #1d1d1f;
-  --color-ink-soft: rgba(29, 29, 31, 0.6);
+:root[data-theme='dark'] {
+  --bg: #06070a;
+  --bg-2: #0d1016;
+  --ink: #f4f6fa;
+  --ink-2: #b3bac6;
+  --ink-3: #838b98;
 
-  --glass-fill: rgba(255, 255, 255, 0.55);
-  --glass-fill-strong: rgba(255, 255, 255, 0.78);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-border-strong: rgba(0, 0, 0, 0.14);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --scrim: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.55) 0%,
-    rgba(245, 245, 247, 0.3) 45%,
-    rgba(255, 255, 255, 0.6) 100%
-  );
+  --accent: #4aa8ff;
+  --accent-2: #9b8cff;
+  --accent-ink: #05070c;
+
+  --glass-bg: rgba(255, 255, 255, 0.055);
+  --glass-bg-strong: rgba(255, 255, 255, 0.1);
+  --glass-brd: rgba(255, 255, 255, 0.13);
+  --glass-brd-2: rgba(255, 255, 255, 0.07);
+  --glass-hi: rgba(255, 255, 255, 0.28);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.34);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45), 0 18px 44px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.5), 0 36px 80px rgba(0, 0, 0, 0.62);
+
+  --orb-1: #1f6bff;
+  --orb-2: #7a4dff;
+  --orb-op: 0.38;
+  --grid-line: rgba(255, 255, 255, 0.045);
+
+  --frame: rgba(255, 255, 255, 0.06);
+
+  --scheme: dark;
 }
