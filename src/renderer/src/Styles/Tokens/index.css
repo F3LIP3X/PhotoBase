@@ -1,0 +1,55 @@
+:root {
+  /* Neutral palette — dark theme (default) */
+  --color-bg: #0b0b0d;
+  --color-ink: #f5f5f7;
+  --color-ink-soft: rgba(245, 245, 247, 0.6);
+  --color-accent: #d6336c;
+  --color-accent-soft: rgba(214, 51, 108, 0.16);
+
+  /* Glass surfaces */
+  --glass-fill: rgba(255, 255, 255, 0.06);
+  --glass-fill-strong: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-border-strong: rgba(255, 255, 255, 0.24);
+  --glass-blur: 28px;
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  --scrim: linear-gradient(
+    160deg,
+    rgba(5, 5, 6, 0.55) 0%,
+    rgba(20, 20, 22, 0.3) 45%,
+    rgba(2, 2, 3, 0.65) 100%
+  );
+
+  /* Radii */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* Type */
+  --font-ui:
+    'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Inter',
+    system-ui, sans-serif;
+  --font-mono:
+    'Cascadia Code', 'SF Mono', ui-monospace, 'Consolas', monospace;
+}
+
+:root[data-theme='light'] {
+  --color-bg: #f5f5f7;
+  --color-ink: #1d1d1f;
+  --color-ink-soft: rgba(29, 29, 31, 0.6);
+
+  --glass-fill: rgba(255, 255, 255, 0.55);
+  --glass-fill-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-strong: rgba(0, 0, 0, 0.14);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --scrim: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(245, 245, 247, 0.3) 45%,
+    rgba(255, 255, 255, 0.6) 100%
+  );
+}

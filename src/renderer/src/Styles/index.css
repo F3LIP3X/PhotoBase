@@ -1,0 +1,76 @@
+@import './Tokens/index.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: var(--font-ui);
+    background: var(--color-bg);
+    color: var(--color-ink);
+    overflow: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+@layer components {
+  .ambient-backdrop {
+    position: fixed;
+    inset: -12%;
+    z-index: -2;
+    background-image: url('../assets/PB-Background.png');
+    background-size: cover;
+    background-position: center;
+    filter: blur(40px) saturate(0.25) brightness(0.9);
+    transform: scale(1.08);
+  }
+
+  .ambient-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: var(--scrim);
+  }
+
+  .glass {
+    background: var(--glass-fill);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    box-shadow: var(--glass-shadow), var(--glass-highlight);
+  }
+
+  .glass-strong {
+    background: var(--glass-fill-strong);
+    border: 1px solid var(--glass-border-strong);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    box-shadow: var(--glass-shadow), var(--glass-highlight);
+  }
+
+  .text-meta {
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+  }
+
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--glass-border-strong) transparent;
+  }
+
+  .scroll-thin::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scroll-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background-color: var(--glass-border-strong);
+    border-radius: var(--radius-pill);
+  }
+}

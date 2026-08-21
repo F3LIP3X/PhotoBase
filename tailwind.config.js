@@ -5,9 +5,19 @@ export default {
     "./src/renderer/src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        bg: 'var(--color-bg)',
+        ink: 'var(--color-ink)',
+        'ink-soft': 'var(--color-ink-soft)',
+        accent: 'var(--color-accent)',
+        'accent-soft': 'var(--color-accent-soft)',
+      },
+      fontFamily: {
+        ui: 'var(--font-ui)',
+        mono: 'var(--font-mono)',
+      },
+    },
   },
-  plugins: [
-    require('daisyui'),
-  ],
+  plugins: [],
 }
