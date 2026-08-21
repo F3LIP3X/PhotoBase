@@ -1,10 +1,3 @@
-const GROUPS = [
-  { date: '12 agosto 2026', place: 'Granada', count: 11 },
-  { date: '10 agosto 2026', place: 'Casa', count: 17 },
-  { date: '3 agosto 2026', place: 'Sierra Nevada', count: 8 },
-  { date: '27 julio 2026', place: 'Cádiz', count: 22 },
-];
-
 /* Stand-in frames until a real library is indexed. Cool, desaturated
    tones only: the sheet sits under the glass chrome, and a loud grid
    would fight the ambient field rather than feed it. */
@@ -22,10 +15,10 @@ function frameStyle(seed) {
    instead of reading as a uniform wall of identical squares. */
 const isFeature = (index) => index % 5 === 2;
 
-const ContactSheet = () => (
+const ContactSheet = ({ groups }) => (
   <>
-    {GROUPS.map(({ date, place, count }, groupIndex) => (
-      <section key={date} className="mb-10 last:mb-0">
+    {groups.map(({ date, place, count }, groupIndex) => (
+      <section key={`${place}-${date}`} className="mb-10 last:mb-0">
         <div className="mb-3 flex items-baseline gap-3">
           <h2 className="text-[15px] text-ink">{place}</h2>
           <span className="eyebrow text-ink-3">{date}</span>
