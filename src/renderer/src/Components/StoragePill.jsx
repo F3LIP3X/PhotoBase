@@ -1,15 +1,40 @@
+import { useEffect, useState } from 'react';
 import { PiHardDrivesFill } from 'react-icons/pi';
-import { STORAGE } from '../data/library';
+
+const WARN_AT = 0.9;
 
 const StoragePill = () => {
-  const { usedGB, quotaGB, warnAt } = STORAGE;
-  const ratio = usedGB / quotaGB;
-  const nearLimit = ratio >= warnAt;
+  const [usage, setUsage] = useState(null);
+
+  useEffect(() => {
+    const api = globalThis.api?.library;
+    if (!api) return;
+
+    let live = true;
+    api.usage().then((value) => {
+      if (live) setUsage(value);
+    });
+
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  /* Nothing to promise until the library has been configured. */
+  if (!usage?.quotaGB) return null;
+
+  const { usedGB, quotaGB } = usage;
+  const ratio = Math.min(usedGB / quotaGB, 1);
+  const nearLimit = ratio >= WARN_AT;
 
   return (
     <div
       className="glass absolute bottom-4 right-4 z-20 flex items-center gap-3 rounded-full py-2.5 pl-4 pr-5"
-      title={nearLimit ? 'Cerca del límite: las importaciones se bloquearán al llegar' : undefined}
+      title={
+        nearLimit
+          ? 'Cerca del límite: las copias nuevas se detendrán al llegar'
+          : undefined
+      }
     >
       <PiHardDrivesFill className={nearLimit ? 'text-accent-2' : 'text-ink-3'} />
 
@@ -24,7 +49,7 @@ const StoragePill = () => {
       </div>
 
       <span className="eyebrow text-ink-2">
-        {usedGB} / {quotaGB} GB
+        {usedGB < 0.1 ? '0' : usedGB.toFixed(1)} / {quotaGB} GB
       </span>
     </div>
   );

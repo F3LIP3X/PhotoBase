@@ -54,7 +54,6 @@ export const FACETS = [
   },
 ];
 
-export const STORAGE = { usedGB: 67, quotaGB: 100, warnAt: 0.9 };
 
 export const countItems = (groups) =>
   groups.reduce((total, group) => total + group.count, 0);
