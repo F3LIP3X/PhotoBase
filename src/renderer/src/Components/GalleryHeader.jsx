@@ -1,41 +1,50 @@
-// GalleryHeader.jsx
-import React from 'react';
-
-//Img
+import React, { useState } from 'react';
+import { AiOutlineSearch } from 'react-icons/ai';
 import ImgLogo from '../assets/Icon.png';
+import ThemeToggle from './ThemeToggle';
 
 const GalleryHeader = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <div className="navbar bg-base-100">
-      <div className="flex-1">
-        <a className="btn btn-ghost text-xl text-white dark:text-gray-400">Galería</a>
+    <header className="glass mx-4 mt-4 flex items-center gap-4 rounded-[var(--radius-lg)] px-6 py-4">
+      <h1 className="text-lg font-semibold tracking-tight text-ink">Galería</h1>
+
+      <div className="ml-auto flex items-center gap-2 rounded-[var(--radius-pill)] bg-[var(--glass-fill)] px-4 py-2">
+        <AiOutlineSearch className="text-ink-soft" />
+        <input
+          type="text"
+          placeholder="Buscar por fecha, lugar o persona"
+          className="w-64 bg-transparent text-sm text-ink placeholder-[var(--color-ink-soft)] outline-none"
+        />
       </div>
-      <div className="flex-none gap-3">
-        <div className="form-control w-auto ">
-          <input type="text" placeholder="Buscar 'Granada'" className="input input-bordered w-auto" />
-        </div>
-        <div className="dropdown dropdown-end">
-          <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
-            <div className="w-10 rounded-full">
-              <img
-                alt="Tailwind CSS Navbar component"
-                src={ImgLogo} />
-            </div>
-          </div>
-          <ul
-            tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow">
-            <li>
-              <a className="justify-between">
-                Perfil
-              </a>
+
+      <ThemeToggle />
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+          className="h-10 w-10 overflow-hidden rounded-[var(--radius-pill)] border border-[var(--glass-border)]"
+        >
+          <img src={ImgLogo} alt="Perfil" className="h-full w-full object-cover" />
+        </button>
+
+        {menuOpen && (
+          <ul className="glass-strong absolute right-0 top-12 w-44 rounded-[var(--radius-md)] p-2 text-sm text-ink">
+            <li className="cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 hover:bg-[var(--glass-fill-strong)]">
+              Perfil
             </li>
-            <li><a>Ajustes</a></li>
-            <li><a>Cerrar Sesión</a></li>
+            <li className="cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 hover:bg-[var(--glass-fill-strong)]">
+              Ajustes
+            </li>
+            <li className="cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 hover:bg-[var(--glass-fill-strong)]">
+              Cerrar sesión
+            </li>
           </ul>
-        </div>
+        )}
       </div>
-    </div>
+    </header>
   );
 };
 
