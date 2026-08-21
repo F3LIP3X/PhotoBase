@@ -1,38 +1,54 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Icon from './assets/Icon.png';
+import { PiShieldCheckFill, PiArrowRightBold } from 'react-icons/pi';
+import Mark from './Components/Mark';
 import ThemeToggle from './Components/ThemeToggle';
 
 function Welcome() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
-      <div className="ambient-backdrop" />
-      <div className="ambient-overlay" />
+    <div className="relative flex h-screen items-center justify-center overflow-hidden">
+      <div className="ambient">
+        <span className="orb orb-1" />
+        <span className="orb orb-2" />
+        <span className="orb orb-3" />
+      </div>
 
-      <div className="absolute right-6 top-6">
+      <div className="absolute right-5 top-5 z-20">
         <ThemeToggle />
       </div>
 
-      <div className="glass-strong relative flex w-full max-w-md flex-col items-center gap-6 rounded-[var(--radius-lg)] px-10 py-12 text-center">
-        <img src={Icon} alt="PhotoBase" className="h-20 w-20 rounded-[var(--radius-md)]" />
+      <div className="absolute left-6 top-6 z-20 flex items-center gap-2.5">
+        <Mark size={26} />
+        <span className="text-[15px] font-semibold tracking-tight text-ink">PhotoBase</span>
+      </div>
 
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">PhotoBase</h1>
-          <p className="text-sm text-ink-soft">
-            Tus fotos y videos, guardados en tu propio equipo. Sin nube, sin cuentas.
-          </p>
-        </div>
+      <main className="relative z-10 flex max-w-xl flex-col items-center px-8 text-center">
+        <span className="glass eyebrow inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-ink-2">
+          <PiShieldCheckFill className="text-accent" />
+          Sin conexión
+        </span>
+
+        <h1 className="mt-6 text-[clamp(2.25rem,5vw,3.25rem)] text-ink">
+          Tus fotos viven
+          <br />
+          en tu disco.
+        </h1>
+
+        <p className="mt-5 max-w-md text-[15px] leading-relaxed text-ink-2">
+          PhotoBase organiza tu biblioteca leyendo los metadatos de cada archivo.
+          Nada se sube, nada se sincroniza, nada sale de este equipo.
+        </p>
 
         <button
           type="button"
           onClick={() => navigate('/gallery')}
-          className="glass w-full rounded-[var(--radius-pill)] px-6 py-3 text-sm font-semibold tracking-wide text-ink transition-colors hover:bg-[var(--glass-fill-strong)]"
+          className="group mt-9 inline-flex items-center gap-2.5 rounded-full bg-accent px-7 py-3.5 text-[14px] font-semibold text-accent-ink shadow-md transition-transform duration-300 ease-glass hover:-translate-y-0.5"
         >
-          Entrar a PhotoBase
+          Abrir mi biblioteca
+          <PiArrowRightBold className="transition-transform duration-300 ease-glass group-hover:translate-x-1" />
         </button>
-      </div>
+      </main>
     </div>
   );
 }

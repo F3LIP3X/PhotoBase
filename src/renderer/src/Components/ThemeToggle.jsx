@@ -1,8 +1,7 @@
-import React from 'react';
-import { FiSun, FiMoon } from 'react-icons/fi';
+import { PiSunFill, PiMoonFill } from 'react-icons/pi';
 import { useTheme } from '../hooks/useTheme';
 
-const ThemeToggle = () => {
+const ThemeToggle = ({ className = '' }) => {
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === 'light';
 
@@ -11,9 +10,9 @@ const ThemeToggle = () => {
       type="button"
       onClick={toggleTheme}
       aria-label={isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
-      className="glass flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-ink transition-colors hover:bg-[var(--glass-fill-strong)]"
+      className={`control h-9 w-9 ${className}`}
     >
-      {isLight ? <FiMoon /> : <FiSun />}
+      {isLight ? <PiMoonFill /> : <PiSunFill />}
     </button>
   );
 };
