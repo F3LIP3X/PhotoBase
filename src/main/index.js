@@ -1,7 +1,12 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { createDeviceWatcher } from './devices/watcher'
+
+const DEVICES_CHANNEL = 'devices:changed'
+
+let watcher = null
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -30,6 +35,25 @@ function createWindow() {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
+}
+
+function startDeviceWatcher() {
+  watcher = createDeviceWatcher({
+    onChange(devices) {
+      /* A window can be gone or still loading by the time a poll lands. */
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (!window.isDestroyed()) {
+          window.webContents.send(DEVICES_CHANNEL, devices)
+        }
+      }
+    },
+  })
+
+  ipcMain.handle('devices:list', () => watcher.current())
+
+  watcher.start()
 }
 
 app.whenReady().then(() => {
@@ -39,6 +63,7 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  startDeviceWatcher()
   createWindow()
 
   app.on('activate', function () {
@@ -50,4 +75,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  watcher?.stop()
 })

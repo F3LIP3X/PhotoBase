@@ -1,7 +1,23 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
-const api = {}
+const DEVICES_CHANNEL = 'devices:changed'
+
+/* A narrow surface on purpose: the renderer gets these calls and nothing
+   else, never a raw ipcRenderer it could send arbitrary channels on. */
+const api = {
+  devices: {
+    list: () => ipcRenderer.invoke('devices:list'),
+
+    /* Returns its own unsubscribe so callers can clean up without
+       reaching for removeListener and the exact handler identity. */
+    onChanged(callback) {
+      const handler = (_event, devices) => callback(devices)
+      ipcRenderer.on(DEVICES_CHANNEL, handler)
+      return () => ipcRenderer.removeListener(DEVICES_CHANNEL, handler)
+    },
+  },
+}
 
 if (process.contextIsolated) {
   try {
