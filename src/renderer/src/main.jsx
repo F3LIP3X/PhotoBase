@@ -1,20 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import './index.css';
+import './Styles/index.css';
 
 // Pages
-import Login from './Login';
-import Register from './Register';
-import GalleryPage from './GaleryPage';  // Importa la página de la galería
+import Welcome from './Welcome';
+import GalleryPage from './GaleryPage';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/gallery" element={<GalleryPage />} />  
+        <Route path="/" element={<Welcome />} />
+        <Route path="/gallery" element={<GalleryPage />} />
       </Routes>
     </Router>
   </React.StrictMode>
