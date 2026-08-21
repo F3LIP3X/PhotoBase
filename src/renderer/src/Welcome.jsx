@@ -42,7 +42,7 @@ function Welcome() {
 
         <button
           type="button"
-          onClick={() => navigate('/gallery')}
+          onClick={() => navigate('/fotos')}
           className="group mt-9 inline-flex items-center gap-2.5 rounded-full bg-accent px-7 py-3.5 text-[14px] font-semibold text-accent-ink shadow-md transition-transform duration-300 ease-glass hover:-translate-y-0.5"
         >
           Abrir mi biblioteca

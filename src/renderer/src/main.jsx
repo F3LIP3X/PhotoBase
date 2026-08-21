@@ -1,19 +1,32 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './Styles/index.css';
 
-// Pages
+import Shell from './Components/Shell';
 import Welcome from './Welcome';
-import GalleryPage from './GaleryPage';
+import Photos from './Pages/Photos';
+import Explore from './Pages/Explore';
+import Favorites from './Pages/Favorites';
+import Devices from './Pages/Devices';
+import Trash from './Pages/Trash';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Router>
       <Routes>
         <Route path="/" element={<Welcome />} />
-        <Route path="/gallery" element={<GalleryPage />} />
+
+        <Route element={<Shell />}>
+          <Route path="/fotos" element={<Photos />} />
+          <Route path="/explorar" element={<Explore />} />
+          <Route path="/favoritos" element={<Favorites />} />
+          <Route path="/dispositivos" element={<Devices />} />
+          <Route path="/papelera" element={<Trash />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/fotos" replace />} />
       </Routes>
     </Router>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
