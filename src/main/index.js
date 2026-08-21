@@ -16,7 +16,9 @@ function createWindow() {
     autoHideMenuBar: true,
     icon,
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      /* The preload is emitted as .mjs because the package is ESM. Pointing
+         at .js silently loads nothing and the bridge never appears. */
+      preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
     },
   })
@@ -52,6 +54,7 @@ function startDeviceWatcher() {
   })
 
   ipcMain.handle('devices:list', () => watcher.current())
+  ipcMain.handle('devices:refresh', () => watcher.refresh())
 
   watcher.start()
 }
