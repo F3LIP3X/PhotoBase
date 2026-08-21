@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { PiMagnifyingGlassBold, PiSlidersHorizontalBold } from 'react-icons/pi';
 import ThemeToggle from './ThemeToggle';
 
-const Toolbar = ({ condensed }) => {
+const Toolbar = ({ title, subtitle, searchable, condensed }) => {
   const [query, setQuery] = useState('');
 
   return (
@@ -12,32 +12,37 @@ const Toolbar = ({ condensed }) => {
       }`}
     >
       <div className="min-w-0">
-        <h1 className="truncate text-[17px] leading-tight text-ink">Fotos</h1>
-        <p
-          className={`eyebrow overflow-hidden text-ink-3 transition-all duration-300 ease-glass ${
-            condensed ? 'max-h-0 opacity-0' : 'mt-1 max-h-5 opacity-100'
-          }`}
-        >
-          58 elementos · 4 días
-        </p>
+        <h1 className="truncate text-[17px] leading-tight text-ink">{title}</h1>
+        {subtitle && (
+          <p
+            className={`eyebrow overflow-hidden text-ink-3 transition-all duration-300 ease-glass ${
+              condensed ? 'max-h-0 opacity-0' : 'mt-1 max-h-5 opacity-100'
+            }`}
+          >
+            {subtitle}
+          </p>
+        )}
       </div>
 
-      <label className="ml-auto flex h-9 min-w-0 max-w-[320px] flex-1 items-center gap-2 rounded-full bg-[var(--glass-bg-strong)] px-3.5">
-        <PiMagnifyingGlassBold className="shrink-0 text-ink-3" />
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Fecha, lugar o cámara"
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
-        />
-      </label>
+      {searchable && (
+        <label className="ml-auto flex h-9 min-w-0 max-w-[320px] flex-1 items-center gap-2 rounded-full bg-[var(--glass-bg-strong)] px-3.5">
+          <PiMagnifyingGlassBold className="shrink-0 text-ink-3" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Fecha, lugar o cámara"
+            className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
+          />
+        </label>
+      )}
 
-      <ThemeToggle />
-
-      <button type="button" aria-label="Ajustes de vista" className="control h-9 w-9">
-        <PiSlidersHorizontalBold />
-      </button>
+      <div className={`flex items-center gap-1 ${searchable ? '' : 'ml-auto'}`}>
+        <ThemeToggle />
+        <button type="button" aria-label="Ajustes de vista" className="control h-9 w-9">
+          <PiSlidersHorizontalBold />
+        </button>
+      </div>
     </header>
   );
 };

@@ -1,20 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import {
-  PiImagesSquareFill,
-  PiCompassFill,
-  PiStarFill,
-  PiTrashFill,
-  PiUsbFill,
-} from 'react-icons/pi';
 import Mark from './Mark';
-
-const NAV_ITEMS = [
-  { to: '/fotos', icon: PiImagesSquareFill, label: 'Fotos' },
-  { to: '/explorar', icon: PiCompassFill, label: 'Explorar' },
-  { to: '/favoritos', icon: PiStarFill, label: 'Favoritos' },
-  { to: '/dispositivos', icon: PiUsbFill, label: 'Dispositivos' },
-  { to: '/papelera', icon: PiTrashFill, label: 'Papelera' },
-];
+import { SECTIONS } from '../navigation';
 
 const Rail = () => {
   const { pathname } = useLocation();
@@ -25,12 +11,12 @@ const Rail = () => {
         <Mark size={28} />
       </Link>
 
-      {NAV_ITEMS.map(({ to, icon: Icon, label }) => {
-        const active = pathname === to;
+      {SECTIONS.map(({ path, label, icon: Icon }) => {
+        const active = pathname === path;
         return (
           <Link
-            key={to}
-            to={to}
+            key={path}
+            to={path}
             aria-current={active ? 'page' : undefined}
             className={`group relative flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-sm transition-colors duration-200 ease-glass ${
               active ? 'bg-[var(--glass-bg-strong)]' : 'hover:bg-[var(--glass-bg-strong)]'
