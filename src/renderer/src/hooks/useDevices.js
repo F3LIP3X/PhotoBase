@@ -20,6 +20,10 @@ export function useDevices() {
       return undefined;
     }
 
+    /* Tell main someone is watching, so it only probes the shell while
+       this screen is mounted. */
+    devicesApi.subscribe();
+
     devicesApi.list().then((initial) => {
       if (live.current) {
         setDevices(initial);
@@ -34,6 +38,7 @@ export function useDevices() {
     return () => {
       live.current = false;
       unsubscribe();
+      devicesApi.unsubscribe();
     };
   }, []);
 

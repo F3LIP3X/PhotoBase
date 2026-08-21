@@ -19,6 +19,8 @@ const api = {
   devices: {
     list: () => ipcRenderer.invoke('devices:list'),
     refresh: () => ipcRenderer.invoke('devices:refresh'),
+    subscribe: () => ipcRenderer.invoke('devices:subscribe'),
+    unsubscribe: () => ipcRenderer.invoke('devices:unsubscribe'),
 
     /* Returns its own unsubscribe so callers can clean up without
        reaching for removeListener and the exact handler identity. */

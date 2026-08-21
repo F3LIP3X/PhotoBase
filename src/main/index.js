@@ -50,7 +50,7 @@ function createWindow() {
   return mainWindow
 }
 
-function startDeviceWatcher() {
+function registerDeviceHandlers() {
   watcher = createDeviceWatcher({
     onChange(devices) {
       /* A window can be gone or still loading by the time a poll lands. */
@@ -65,7 +65,9 @@ function startDeviceWatcher() {
   ipcMain.handle('devices:list', () => watcher.current())
   ipcMain.handle('devices:refresh', () => watcher.refresh())
 
-  watcher.start()
+  /* Polling only runs while a screen is actually showing devices. */
+  ipcMain.handle('devices:subscribe', () => watcher.acquire())
+  ipcMain.handle('devices:unsubscribe', () => watcher.release())
 }
 
 function registerSettingsHandlers() {
@@ -93,9 +95,17 @@ function registerSettingsHandlers() {
     return { ...saved, configured: isConfigured() }
   })
 
-  ipcMain.handle('settings:pickFolder', (event) =>
-    pickLibraryFolder(BrowserWindow.fromWebContents(event.sender)),
-  )
+  ipcMain.handle('settings:pickFolder', async (event) => {
+    /* The native folder dialog is a shell COM client, and so is the device
+       probe. Running both at once can hang the main process, so the probe
+       stands down for as long as the dialog is up. */
+    watcher?.pause()
+    try {
+      return await pickLibraryFolder(BrowserWindow.fromWebContents(event.sender))
+    } finally {
+      watcher?.resume()
+    }
+  })
 
   ipcMain.handle('library:usage', async () => {
     const { libraryPath, quotaGB } = readSettings()
@@ -112,7 +122,7 @@ app.whenReady().then(() => {
   })
 
   registerSettingsHandlers()
-  startDeviceWatcher()
+  registerDeviceHandlers()
   createWindow()
 
   app.on('activate', function () {

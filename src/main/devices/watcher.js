@@ -38,16 +38,48 @@ export function createDeviceWatcher({ onChange, intervalMs = DEFAULT_INTERVAL_MS
     return inFlight
   }
 
-  return {
-    start() {
-      if (timer) return
+  let subscribers = 0
+  let paused = false
+
+  const running = () => subscribers > 0 && !paused
+
+  function sync() {
+    if (running() && !timer) {
       poll()
       timer = setInterval(poll, intervalMs)
-    },
-    stop() {
-      if (!timer) return
+    } else if (!running() && timer) {
       clearInterval(timer)
       timer = null
+    }
+  }
+
+  return {
+    /* Probing spawns a shell process that walks the phone over COM. Doing
+       that forever, for an app that is usually not on the Devices screen,
+       wastes power and — worse — contends with the Windows shell: a native
+       folder dialog is also a shell COM client, and the two together can
+       hang the main process. So we only poll while someone is watching. */
+    acquire() {
+      subscribers += 1
+      sync()
+    },
+    release() {
+      subscribers = Math.max(0, subscribers - 1)
+      sync()
+    },
+    /* Held while a native dialog is open, for the same reason. */
+    pause() {
+      paused = true
+      sync()
+    },
+    resume() {
+      paused = false
+      sync()
+    },
+    stop() {
+      subscribers = 0
+      paused = true
+      sync()
     },
     /* The renderer asks for the current list on mount, before the next
        tick would have told it anything. */
