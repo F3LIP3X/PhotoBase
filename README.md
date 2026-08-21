@@ -1,8 +1,15 @@
-# React + Vite
+# PhotoBase
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Local Electron photo manager built with React and electron-vite.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js 20+
+- pnpm (via `corepack enable`)
+
+## Scripts
+
+- `pnpm dev` — run the app in development (Electron + Vite HMR)
+- `pnpm build` — build main/preload/renderer for production
+- `pnpm lint` — lint the renderer source
+- `pnpm build:linux` / `pnpm build:win` / `pnpm build:mac` — package the app with electron-builder
