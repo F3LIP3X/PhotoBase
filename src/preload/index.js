@@ -6,6 +6,16 @@ const DEVICES_CHANNEL = 'devices:changed'
 /* A narrow surface on purpose: the renderer gets these calls and nothing
    else, never a raw ipcRenderer it could send arbitrary channels on. */
 const api = {
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    save: (patch) => ipcRenderer.invoke('settings:save', patch),
+    pickFolder: () => ipcRenderer.invoke('settings:pickFolder'),
+  },
+
+  library: {
+    usage: () => ipcRenderer.invoke('library:usage'),
+  },
+
   devices: {
     list: () => ipcRenderer.invoke('devices:list'),
     refresh: () => ipcRenderer.invoke('devices:refresh'),

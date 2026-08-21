@@ -3,6 +3,15 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createDeviceWatcher } from './devices/watcher'
+import {
+  readSettings,
+  writeSettings,
+  isConfigured,
+  pickLibraryFolder,
+  ensureLibraryFolder,
+  suggestedLibraryPath,
+} from './settings'
+import { libraryUsage } from './library/usage'
 
 const DEVICES_CHANNEL = 'devices:changed'
 
@@ -59,6 +68,42 @@ function startDeviceWatcher() {
   watcher.start()
 }
 
+function registerSettingsHandlers() {
+  ipcMain.handle('settings:get', () => ({
+    ...readSettings(),
+    configured: isConfigured(),
+    suggestedPath: suggestedLibraryPath(),
+  }))
+
+  ipcMain.handle('settings:save', (_event, patch) => {
+    /* Only ever accept the two fields this app owns, and validate the
+       quota here rather than trusting whatever the renderer sent. */
+    const next = {}
+
+    if (typeof patch?.libraryPath === 'string' && patch.libraryPath.trim()) {
+      next.libraryPath = ensureLibraryFolder(patch.libraryPath.trim())
+    }
+
+    const quota = Number(patch?.quotaGB)
+    if (Number.isFinite(quota) && quota > 0) {
+      next.quotaGB = quota
+    }
+
+    const saved = writeSettings(next)
+    return { ...saved, configured: isConfigured() }
+  })
+
+  ipcMain.handle('settings:pickFolder', (event) =>
+    pickLibraryFolder(BrowserWindow.fromWebContents(event.sender)),
+  )
+
+  ipcMain.handle('library:usage', async () => {
+    const { libraryPath, quotaGB } = readSettings()
+    const { usedGB } = await libraryUsage(libraryPath)
+    return { usedGB, quotaGB }
+  })
+}
+
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.photobase.app')
 
@@ -66,6 +111,7 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  registerSettingsHandlers()
   startDeviceWatcher()
   createWindow()
 
