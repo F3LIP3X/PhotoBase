@@ -2,9 +2,15 @@ import { useNavigate } from 'react-router-dom';
 import { PiShieldCheckFill, PiArrowRightBold } from 'react-icons/pi';
 import Mark from './Components/Mark';
 import ThemeToggle from './Components/ThemeToggle';
+import { useSettings } from './hooks/useSettings';
 
 function Welcome() {
   const navigate = useNavigate();
+  const { settings } = useSettings();
+
+  /* First run goes through setup; afterwards the button opens the
+     library directly. */
+  const enter = () => navigate(settings?.configured ? '/fotos' : '/configurar');
 
   return (
     <div className="relative flex h-screen items-center justify-center overflow-hidden">
@@ -42,7 +48,7 @@ function Welcome() {
 
         <button
           type="button"
-          onClick={() => navigate('/fotos')}
+          onClick={enter}
           className="group mt-9 inline-flex items-center gap-2.5 rounded-full bg-accent px-7 py-3.5 text-[14px] font-semibold text-accent-ink shadow-md transition-transform duration-300 ease-glass hover:-translate-y-0.5"
         >
           Abrir mi biblioteca

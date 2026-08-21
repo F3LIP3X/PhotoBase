@@ -5,6 +5,7 @@ import './Styles/index.css';
 
 import Shell from './Components/Shell';
 import Welcome from './Welcome';
+import Setup from './Pages/Setup';
 import Photos from './Pages/Photos';
 import Explore from './Pages/Explore';
 import Favorites from './Pages/Favorites';
@@ -16,6 +17,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <Router>
       <Routes>
         <Route path="/" element={<Welcome />} />
+        <Route path="/configurar" element={<Setup />} />
 
         <Route element={<Shell />}>
           <Route path="/fotos" element={<Photos />} />
