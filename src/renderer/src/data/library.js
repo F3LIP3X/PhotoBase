@@ -54,16 +54,6 @@ export const FACETS = [
   },
 ];
 
-export const DEVICES = [
-  {
-    id: 'pixel-8',
-    name: 'Pixel 8',
-    connected: false,
-    lastBackup: '10 agosto 2026',
-    newItems: 0,
-  },
-];
-
 export const STORAGE = { usedGB: 67, quotaGB: 100, warnAt: 0.9 };
 
 export const countItems = (groups) =>
