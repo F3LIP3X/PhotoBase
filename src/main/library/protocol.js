@@ -3,6 +3,7 @@ import { join, resolve, sep } from 'path'
 import { pathToFileURL } from 'url'
 import { readSettings } from '../settings'
 import { logError } from '../log'
+import { thumbnailFor } from './thumbnails'
 
 export const MEDIA_SCHEME = 'photobase'
 
@@ -36,6 +37,14 @@ export function handleMediaRequests() {
 
       if (target !== root && !target.startsWith(root + sep)) {
         return new Response('Forbidden', { status: 403 })
+      }
+
+      /* The grid asks for thumbs, the viewer for the original. Sending
+         full 3 MB frames to a wall of 112px tiles is what made scrolling
+         crawl. */
+      if (url.hostname === 'thumb') {
+        const thumb = thumbnailFor(target, relative)
+        if (thumb) return net.fetch(pathToFileURL(thumb).toString())
       }
 
       return net.fetch(pathToFileURL(target).toString())

@@ -39,6 +39,10 @@ const api = {
        library, so the renderer never handles filesystem paths. */
     url: (relativePath) =>
       `photobase://media/${relativePath.split('/').map(encodeURIComponent).join('/')}`,
+
+    /* The grid uses this; only the open photo loads the original. */
+    thumbUrl: (relativePath) =>
+      `photobase://thumb/${relativePath.split('/').map(encodeURIComponent).join('/')}`,
   },
 
   backup: {
