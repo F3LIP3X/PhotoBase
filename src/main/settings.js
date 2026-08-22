@@ -45,6 +45,13 @@ export function writeSettings(patch) {
   return next
 }
 
+/* The cache is what the rest of the app reads, so removing only the file
+   would leave the old settings alive until the next restart. */
+export function clearSettings() {
+  rmSync(settingsPath(), { force: true })
+  cache = null
+}
+
 /* Configuration is only complete once we know both where the library
    lives and how much of the disk it may use. */
 export const isConfigured = () => {

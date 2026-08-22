@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, statSync } from 'fs'
+import { readFileSync, writeFileSync, statSync, rmSync } from 'fs'
 import { join } from 'path'
 
 const INDEX_FILE = '.photobase-index.json'
@@ -94,6 +94,12 @@ export function recordCopy(index, item, destinationRelative) {
     at: new Date().toISOString(),
   }
   return index
+}
+
+/* Forgetting what was copied is not the same as deleting it: the files
+   stay, and the next backup re-derives the truth from the disk. */
+export function clearIndex(libraryPath) {
+  rmSync(indexPath(libraryPath), { force: true })
 }
 
 /* Destination layout: YYYY/MM taken from the capture date, so the library
