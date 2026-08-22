@@ -26,10 +26,23 @@ export const DEFAULT_SOURCES = ['']
    over MTP. */
 export const EXCLUDED_PATHS = ['Android/data', 'Android/obb']
 
+/* Chat assets rather than photographs: a sticker pack is clip art someone
+   else drew, sent through the app, and WhatsApp keeps them in a folder
+   named exactly this — whether that folder ends up under
+   Android/media/com.whatsapp/... or the older Pictures/WhatsApp/... does
+   not matter, so this matches by name rather than by path. Voice notes
+   need no rule at all: they are .opus/.m4a, and MEDIA_EXTENSIONS above
+   was always images and video, never audio. */
+export const EXCLUDED_FOLDER_NAMES = new Set(
+  ['WhatsApp Stickers', 'WhatsApp Business Stickers'].map((name) => name.toLowerCase()),
+)
+
 /* A leading dot means a cache, not a photo album: .thumbnails alone can
-   hold thousands of derived files that would burn quota for nothing.
-   That is the only name-based rule left. */
-export const isExcludedFolder = (name) => String(name ?? '').startsWith('.')
+   hold thousands of derived files that would burn quota for nothing. */
+export const isExcludedFolder = (name) => {
+  const clean = String(name ?? '')
+  return clean.startsWith('.') || EXCLUDED_FOLDER_NAMES.has(clean.toLowerCase())
+}
 
 export const isExcludedPath = (path) => {
   const clean = String(path ?? '')

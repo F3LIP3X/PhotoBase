@@ -6,6 +6,7 @@ import { app } from 'electron'
 import {
   DEFAULT_SOURCES,
   EXCLUDED_PATHS,
+  EXCLUDED_FOLDER_NAMES,
   MEDIA_EXTENSIONS,
   isExcludedPath,
   isMediaFile,
@@ -26,7 +27,7 @@ const GB = 1024 ** 3
    latter returns localised text ("3,45 MB") that cannot be parsed back
    into a number. */
 const SCAN_SCRIPT = `
-param([string]$DeviceName, [string]$Sources, [string]$Excluded, [string]$Extensions)
+param([string]$DeviceName, [string]$Sources, [string]$Excluded, [string]$Extensions, [string]$SkipNames)
 $ErrorActionPreference = 'SilentlyContinue'
 
 $skip = @($Excluded -split ',' | Where-Object { $_ })
@@ -37,6 +38,12 @@ $skip = @($Excluded -split ',' | Where-Object { $_ })
 # pay to ask how big it is. PowerShell hashtable keys ignore case.
 $exts = @{}
 foreach ($e in ($Extensions -split ',')) { if ($e) { $exts[$e] = $true } }
+
+# Folder names skipped wherever they appear, not just at a fixed path —
+# a sticker pack folder is not worth even opening over MTP, and where it
+# sits under the tree is WhatsApp's business, not ours.
+$skipNames = @{}
+foreach ($n in ($SkipNames -split ',')) { if ($n) { $skipNames[$n.ToLowerInvariant()] = $true } }
 
 # The walk now starts at the storage root, so it needs room for the
 # deeper places apps keep media —
@@ -77,7 +84,7 @@ function Walk($folder, $path, $found, $depth) {
   foreach ($item in $folder.Items()) {
     if ($item.IsFolder) {
       $name = $item.Name
-      if ($name.StartsWith('.')) { continue }
+      if ($name.StartsWith('.') -or $skipNames.ContainsKey($name.ToLowerInvariant())) { continue }
 
       $next = if ($path -eq '') { $name } else { "$path/$name" }
       if ($skip -contains $next) { continue }
@@ -342,6 +349,8 @@ export async function planBackup({ deviceName, libraryPath, quotaGB, onProgress 
       EXCLUDED_PATHS.join(','),
       '-Extensions',
       MEDIA_EXTENSIONS.join(','),
+      '-SkipNames',
+      [...EXCLUDED_FOLDER_NAMES].join(','),
     ],
     {
       onLine(line) {
