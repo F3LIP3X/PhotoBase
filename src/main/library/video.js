@@ -19,10 +19,10 @@ export function ffmpegPath() {
   if (resolved !== undefined) return resolved
 
   const candidates = [
-    /* Packaged: resources/** is unpacked out of the asar so it can be
-       executed — a binary inside an archive cannot be. */
-    process.resourcesPath && join(process.resourcesPath, 'app.asar.unpacked', 'resources', 'ffmpeg', BINARY),
-    process.resourcesPath && join(process.resourcesPath, 'resources', 'ffmpeg', BINARY),
+    /* Packaged: dropped beside the asar by extraResources, so only the
+       binary this platform can actually run gets shipped. */
+    process.resourcesPath && join(process.resourcesPath, 'ffmpeg', BINARY),
+    /* Development, straight out of the checkout. */
     join(app.getAppPath(), 'resources', 'ffmpeg', BINARY),
   ].filter(Boolean)
 
