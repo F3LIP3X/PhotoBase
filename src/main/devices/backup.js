@@ -39,10 +39,16 @@ $MAX_DEPTH = 12
 
 $shell = New-Object -ComObject Shell.Application
 $device = $shell.NameSpace(17).Items() | Where-Object { $_.Name -eq $DeviceName }
-if (-not $device) { Write-Output '[]'; exit }
+if (-not $device) { Write-Output '{"type":"result","items":[]}'; exit }
 $storage = $device.GetFolder.Items() | Select-Object -First 1
-if (-not $storage) { Write-Output '[]'; exit }
+if (-not $storage) { Write-Output '{"type":"result","items":[]}'; exit }
 $root = $storage.GetFolder
+
+# Walking a full phone over MTP takes minutes, and a silent minute is
+# indistinguishable from a hang. Every folder entered says so.
+function Report($path, $count) {
+  Write-Output ('{"type":"scan","path":' + ($path | ConvertTo-Json) + ',"found":' + $count + '}')
+}
 
 function Get-Sub($folder, $name) {
   if ($null -eq $folder) { return $null }
@@ -56,6 +62,9 @@ function Get-Sub($folder, $name) {
 # any of them is to stop guessing and walk the lot.
 function Walk($folder, $path, $found, $depth) {
   if ($null -eq $folder -or $depth -gt $MAX_DEPTH) { return }
+
+  Report $path $found.Count
+  $sinceReport = 0
 
   foreach ($item in $folder.Items()) {
     if ($item.IsFolder) {
@@ -75,6 +84,14 @@ function Walk($folder, $path, $found, $depth) {
       size     = [int64]$item.ExtendedProperty('Size')
       modified = $item.ExtendedProperty('System.DateModified')
     })
+
+    # One folder can hold thousands of files, so the count moves even
+    # while the path does not.
+    $sinceReport++
+    if ($sinceReport -ge 200) {
+      Report $path $found.Count
+      $sinceReport = 0
+    }
   }
 }
 
@@ -90,7 +107,7 @@ foreach ($src in ($Sources -split ',')) {
   Walk $cur $src $found 0
 }
 
-@($found) | ConvertTo-Json -Compress -Depth 3
+[pscustomobject]@{ type = 'result'; items = @($found) } | ConvertTo-Json -Compress -Depth 4
 `
 
 /* CopyHere is asynchronous and has no completion callback, so each file
@@ -278,21 +295,50 @@ function captureDate({ name, modified }) {
 }
 
 /* Reads what is on the device and decides what is genuinely new. */
-export async function planBackup({ deviceName, libraryPath, quotaGB }) {
-  const raw = await powershell(SCAN_SCRIPT, [
-    '-DeviceName',
-    deviceName,
-    '-Sources',
-    DEFAULT_SOURCES.join(','),
-    '-Excluded',
-    EXCLUDED_PATHS.join(','),
-  ])
+export async function planBackup({ deviceName, libraryPath, quotaGB, onProgress }) {
+  let items = null
+  let folders = 0
 
-  let items = []
-  try {
-    items = [].concat(JSON.parse(raw.trim() || '[]') ?? [])
-  } catch (error) {
-    logError('backup scan parse', error)
+  await powershell(
+    SCAN_SCRIPT,
+    [
+      '-DeviceName',
+      deviceName,
+      '-Sources',
+      DEFAULT_SOURCES.join(','),
+      '-Excluded',
+      EXCLUDED_PATHS.join(','),
+    ],
+    {
+      onLine(line) {
+        if (!line.startsWith('{')) return
+
+        let event
+        try {
+          event = JSON.parse(line)
+        } catch {
+          return
+        }
+
+        if (event.type === 'scan') {
+          folders += 1
+          onProgress?.({
+            phase: 'scan',
+            /* The storage root reports itself as an empty path. */
+            path: event.path || '(raíz del teléfono)',
+            found: event.found ?? 0,
+            folders,
+          })
+          return
+        }
+
+        if (event.type === 'result') items = [].concat(event.items ?? [])
+      },
+    },
+  )
+
+  if (!items) {
+    logError('backup scan parse', new Error('scan produced no result line'))
     throw new Error('No se pudo leer el contenido del dispositivo.')
   }
 
@@ -350,6 +396,14 @@ export async function planBackup({ deviceName, libraryPath, quotaGB }) {
     plannedBytes += Number(item.size) || 0
   }
 
+  onProgress?.({
+    phase: 'planned',
+    planned: plan.length,
+    skipped,
+    totalBytes: plannedBytes,
+    found: media.length,
+  })
+
   return { plan, skipped, plannedBytes, total: media.length, index, quotaGB }
 }
 
@@ -359,6 +413,7 @@ export async function runBackup({ deviceName, libraryPath, quotaGB, usedGB, onPr
     deviceName,
     libraryPath,
     quotaGB,
+    onProgress,
   })
 
   /* The quota is a promise, so it is checked before writing rather than
@@ -397,6 +452,7 @@ export async function runBackup({ deviceName, libraryPath, quotaGB, usedGB, onPr
      2 MB photo are one file each and nothing like the same wait. */
   const report = (name) =>
     onProgress?.({
+      phase: 'copy',
       copied,
       planned: plan.length,
       name,
