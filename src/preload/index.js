@@ -3,24 +3,36 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 const DEVICES_CHANNEL = 'devices:changed'
 
+/* Main wraps every handler's result as {ok, value, error} so a failure
+   travels as data instead of dying as an unhandled rejection. Unwrap it
+   here, so the renderer just gets a value or a real Error to catch. */
+async function call(channel, ...args) {
+  const result = await ipcRenderer.invoke(channel, ...args)
+  if (result && typeof result === 'object' && 'ok' in result) {
+    if (!result.ok) throw new Error(result.error)
+    return result.value
+  }
+  return result
+}
+
 /* A narrow surface on purpose: the renderer gets these calls and nothing
    else, never a raw ipcRenderer it could send arbitrary channels on. */
 const api = {
   settings: {
-    get: () => ipcRenderer.invoke('settings:get'),
-    save: (patch) => ipcRenderer.invoke('settings:save', patch),
-    pickFolder: () => ipcRenderer.invoke('settings:pickFolder'),
+    get: () => call('settings:get'),
+    save: (patch) => call('settings:save', patch),
+    pickFolder: () => call('settings:pickFolder'),
   },
 
   library: {
-    usage: () => ipcRenderer.invoke('library:usage'),
+    usage: () => call('library:usage'),
   },
 
   devices: {
-    list: () => ipcRenderer.invoke('devices:list'),
-    refresh: () => ipcRenderer.invoke('devices:refresh'),
-    subscribe: () => ipcRenderer.invoke('devices:subscribe'),
-    unsubscribe: () => ipcRenderer.invoke('devices:unsubscribe'),
+    list: () => call('devices:list'),
+    refresh: () => call('devices:refresh'),
+    subscribe: () => call('devices:subscribe'),
+    unsubscribe: () => call('devices:unsubscribe'),
 
     /* Returns its own unsubscribe so callers can clean up without
        reaching for removeListener and the exact handler identity. */

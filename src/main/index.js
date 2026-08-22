@@ -12,6 +12,7 @@ import {
   suggestedLibraryPath,
 } from './settings'
 import { libraryUsage } from './library/usage'
+import { log, logError, installCrashHandlers, handled } from './log'
 
 const DEVICES_CHANNEL = 'devices:changed'
 
@@ -34,6 +35,15 @@ function createWindow() {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  /* A renderer that dies leaves a blank window and no clue why. */
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    logError('render-process-gone', new Error(JSON.stringify(details)))
+  })
+
+  mainWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
+    logError(`preload-error ${preloadPath}`, error)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -62,59 +72,97 @@ function registerDeviceHandlers() {
     },
   })
 
-  ipcMain.handle('devices:list', () => watcher.current())
-  ipcMain.handle('devices:refresh', () => watcher.refresh())
+  ipcMain.handle(
+    'devices:list',
+    handled('devices:list', () => watcher.current()),
+  )
+
+  ipcMain.handle(
+    'devices:refresh',
+    handled('devices:refresh', () => watcher.refresh()),
+  )
 
   /* Polling only runs while a screen is actually showing devices. */
-  ipcMain.handle('devices:subscribe', () => watcher.acquire())
-  ipcMain.handle('devices:unsubscribe', () => watcher.release())
+  ipcMain.handle(
+    'devices:subscribe',
+    handled('devices:subscribe', () => {
+      watcher.acquire()
+      return true
+    }),
+  )
+
+  ipcMain.handle(
+    'devices:unsubscribe',
+    handled('devices:unsubscribe', () => {
+      watcher.release()
+      return true
+    }),
+  )
 }
 
 function registerSettingsHandlers() {
-  ipcMain.handle('settings:get', () => ({
-    ...readSettings(),
-    configured: isConfigured(),
-    suggestedPath: suggestedLibraryPath(),
-  }))
+  ipcMain.handle(
+    'settings:get',
+    handled('settings:get', () => ({
+      ...readSettings(),
+      configured: isConfigured(),
+      suggestedPath: suggestedLibraryPath(),
+    })),
+  )
 
-  ipcMain.handle('settings:save', (_event, patch) => {
-    /* Only ever accept the two fields this app owns, and validate the
-       quota here rather than trusting whatever the renderer sent. */
-    const next = {}
+  ipcMain.handle(
+    'settings:save',
+    handled('settings:save', (_event, patch) => {
+      /* Only ever accept the two fields this app owns, and validate the
+         quota here rather than trusting whatever the renderer sent. */
+      const next = {}
 
-    if (typeof patch?.libraryPath === 'string' && patch.libraryPath.trim()) {
-      next.libraryPath = ensureLibraryFolder(patch.libraryPath.trim())
-    }
+      if (typeof patch?.libraryPath === 'string' && patch.libraryPath.trim()) {
+        const wanted = patch.libraryPath.trim()
+        log('creating library folder', wanted)
+        next.libraryPath = ensureLibraryFolder(wanted)
+      }
 
-    const quota = Number(patch?.quotaGB)
-    if (Number.isFinite(quota) && quota > 0) {
-      next.quotaGB = quota
-    }
+      const quota = Number(patch?.quotaGB)
+      if (Number.isFinite(quota) && quota > 0) {
+        next.quotaGB = quota
+      }
 
-    const saved = writeSettings(next)
-    return { ...saved, configured: isConfigured() }
-  })
+      const saved = writeSettings(next)
+      log('settings saved', saved)
+      return { ...saved, configured: isConfigured() }
+    }),
+  )
 
-  ipcMain.handle('settings:pickFolder', async (event) => {
-    /* The native folder dialog is a shell COM client, and so is the device
-       probe. Running both at once can hang the main process, so the probe
-       stands down for as long as the dialog is up. */
-    watcher?.pause()
-    try {
-      return await pickLibraryFolder(BrowserWindow.fromWebContents(event.sender))
-    } finally {
-      watcher?.resume()
-    }
-  })
+  ipcMain.handle(
+    'settings:pickFolder',
+    handled('settings:pickFolder', async (event) => {
+      /* The native folder dialog is a shell COM client, and so is the
+         device probe. Running both at once can hang the main process, so
+         the probe stands down for as long as the dialog is up. */
+      watcher?.pause()
+      try {
+        return await pickLibraryFolder(BrowserWindow.fromWebContents(event.sender))
+      } finally {
+        watcher?.resume()
+      }
+    }),
+  )
 
-  ipcMain.handle('library:usage', async () => {
-    const { libraryPath, quotaGB } = readSettings()
-    const { usedGB } = await libraryUsage(libraryPath)
-    return { usedGB, quotaGB }
-  })
+  ipcMain.handle(
+    'library:usage',
+    handled('library:usage', async () => {
+      const { libraryPath, quotaGB } = readSettings()
+      const { usedGB } = await libraryUsage(libraryPath)
+      return { usedGB, quotaGB }
+    }),
+  )
 }
 
 app.whenReady().then(() => {
+  installCrashHandlers()
+  log('app ready', { version: app.getVersion(), platform: process.platform })
+
   electronApp.setAppUserModelId('com.photobase.app')
 
   app.on('browser-window-created', (_, window) => {
