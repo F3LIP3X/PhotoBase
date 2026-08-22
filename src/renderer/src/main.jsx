@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './Styles/index.css';
 
+import { BackupProvider } from './hooks/useBackup';
 import Shell from './Components/Shell';
 import Welcome from './Welcome';
 import Setup from './Pages/Setup';
@@ -16,8 +17,9 @@ import Settings from './Pages/Settings';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Router>
-      <Routes>
+    <BackupProvider>
+      <Router>
+        <Routes>
         <Route path="/" element={<Welcome />} />
         <Route path="/bloqueo" element={<Lock />} />
         <Route path="/configurar" element={<Setup />} />
@@ -32,7 +34,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </Route>
 
         <Route path="*" element={<Navigate to="/fotos" replace />} />
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </BackupProvider>
   </React.StrictMode>,
 );

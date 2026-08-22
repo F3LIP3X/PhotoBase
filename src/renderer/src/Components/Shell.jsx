@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Rail from './Rail';
 import Toolbar from './Toolbar';
 import StoragePill from './StoragePill';
+import BackupOverlay from './BackupOverlay';
 import { findSection } from '../navigation';
 
 const Shell = () => {
@@ -47,6 +48,7 @@ const Shell = () => {
         onQuery={setQuery}
       />
       <StoragePill />
+      <BackupOverlay />
     </div>
   );
 };
