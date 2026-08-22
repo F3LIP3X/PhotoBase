@@ -60,6 +60,15 @@ const api = {
 
   backup: {
     start: (deviceName) => call('backup:start', deviceName),
+    status: () => call('backup:status'),
+
+    /* Whether a copy is running at all, as opposed to how far along it
+       is: a window that just mounted needs the first before the second. */
+    onState(callback) {
+      const handler = (_event, state) => callback(state)
+      ipcRenderer.on('backup:state', handler)
+      return () => ipcRenderer.removeListener('backup:state', handler)
+    },
 
     onProgress(callback) {
       const handler = (_event, progress) => callback(progress)

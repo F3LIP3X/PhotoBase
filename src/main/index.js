@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, dialog, BrowserWindow, ipcMain, Notification } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -31,8 +31,32 @@ import { isUnlocked, unlock, lock, setPassword, clearPassword } from './auth'
 
 const DEVICES_CHANNEL = 'devices:changed'
 const BACKUP_CHANNEL = 'backup:progress'
+const BACKUP_STATE_CHANNEL = 'backup:state'
 
 let watcher = null
+
+/* Which device is being copied right now, or null. Lives here rather
+   than in a window, because the copy outlives any screen the user
+   happens to be looking at — and closing the window must not silently
+   cut it short. */
+let backupRunning = null
+
+function notify(title, body) {
+  if (!Notification.isSupported()) return
+  try {
+    new Notification({ title, body }).show()
+  } catch (error) {
+    logError('notification', error)
+  }
+}
+
+/* Progress goes to every window, not just the one that asked. The user
+   can navigate anywhere while a copy runs and the copy keeps reporting. */
+function broadcast(channel, payload) {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) window.webContents.send(channel, payload)
+  }
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -51,6 +75,30 @@ function createWindow() {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  /* Closing mid-copy leaves a half-transferred file behind and the rest
+     of the phone unread, so it takes a deliberate answer. */
+  mainWindow.on('close', (event) => {
+    if (!backupRunning) return
+
+    event.preventDefault()
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'warning',
+      buttons: ['Seguir copiando', 'Cerrar de todos modos'],
+      defaultId: 0,
+      cancelId: 0,
+      title: 'Copia en curso',
+      message: `PhotoBase está copiando desde ${backupRunning}.`,
+      detail:
+        'Si cierras ahora, la copia se interrumpe. Lo que ya se haya copiado se ' +
+        'conserva, y la próxima vez continuará donde lo dejó.',
+    })
+
+    if (choice === 1) {
+      backupRunning = null
+      mainWindow.destroy()
+    }
   })
 
   /* A renderer that dies leaves a blank window and no clue why. */
@@ -225,7 +273,13 @@ function registerSettingsHandlers() {
       }
 
       const { usedGB } = await libraryUsage(libraryPath)
-      const sender = event.sender
+
+      backupRunning = deviceName
+      broadcast(BACKUP_STATE_CHANNEL, { running: true, deviceName })
+      notify(
+        'PhotoBase está copiando',
+        `No desconectes ${deviceName} ni cierres la aplicación hasta que termine.`,
+      )
 
       /* The device probe and the copy both drive the Windows shell;
          running them together is what froze the app before. */
@@ -237,7 +291,7 @@ function registerSettingsHandlers() {
           quotaGB,
           usedGB,
           onProgress(progress) {
-            if (!sender.isDestroyed()) sender.send(BACKUP_CHANNEL, progress)
+            broadcast(BACKUP_CHANNEL, progress)
           },
         })
 
@@ -255,11 +309,32 @@ function registerSettingsHandlers() {
            only as good as the index behind it. */
         if (outcome.copied > 0) indexMetadataInBackground()
 
+        notify(
+          outcome.blocked ? 'Copia detenida' : 'Copia terminada',
+          outcome.blocked
+            ? outcome.message
+            : outcome.copied > 0
+              ? `${outcome.copied} elementos nuevos en tu biblioteca.`
+              : 'Ya tenías todo copiado.',
+        )
+
         return outcome
       } finally {
+        backupRunning = null
+        broadcast(BACKUP_STATE_CHANNEL, { running: false, deviceName: null })
         watcher?.resume()
       }
     }),
+  )
+
+  /* A window that opens or reloads while a copy is running has to be
+     able to find out, or it shows a calm library over a busy phone. */
+  ipcMain.handle(
+    'backup:status',
+    handled('backup:status', () => ({
+      running: Boolean(backupRunning),
+      deviceName: backupRunning,
+    })),
   )
 
   ipcMain.handle(
