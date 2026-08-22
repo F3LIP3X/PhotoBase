@@ -1,5 +1,6 @@
 import { app, dialog } from 'electron'
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs'
+import { execFileSync } from 'child_process'
 import { join } from 'path'
 
 /* Settings live beside the app's own data, never inside the library
@@ -7,8 +8,11 @@ import { join } from 'path'
    configuration that points at it. */
 const settingsPath = () => join(app.getPath('userData'), 'settings.json')
 
-/* The suggested library, prefilled but editable at first run. */
-export const suggestedLibraryPath = () => join(app.getPath('pictures'), 'PhotoBase')
+/* Downloads rather than Pictures: Defender's controlled folder access
+   guards Pictures, Documents, Videos and Music by default and refuses
+   the write, while Downloads is left alone. The folder is hidden after
+   creation so it does not clutter a directory the user actually browses. */
+export const suggestedLibraryPath = () => join(app.getPath('downloads'), 'PhotoBase')
 
 const DEFAULTS = {
   libraryPath: null,
@@ -104,5 +108,17 @@ export function ensureLibraryFolder(path) {
     throw new Error(describeFolderFailure(path, error))
   }
 
+  hideFolder(path)
   return path
+}
+
+/* Keeps the library out of the way in a folder the user browses often.
+   Failing to hide it is cosmetic, never a reason to stop. */
+function hideFolder(path) {
+  if (process.platform !== 'win32') return
+  try {
+    execFileSync('attrib', ['+h', path], { windowsHide: true, timeout: 5000 })
+  } catch {
+    /* Cosmetic only. */
+  }
 }
