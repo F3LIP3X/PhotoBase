@@ -8,6 +8,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+
+# Parallel-agent git worktrees — local scratch, never committed
+.claude/worktrees
 dist
 dist-ssr
 
