@@ -13,39 +13,29 @@
  * the device itself captured; everything else is convention.
  */
 
-/* What a backup walks: the three roots Android puts media under, all the
-   way down. Naming exact leaf folders instead missed anything a vendor
-   or a camera app invented — DCIM/100ANDRO, Movies/Camera — and Movies
-   was not listed at all, which is how videos went missing. */
-export const DEFAULT_SOURCES = ['DCIM', 'Pictures', 'Movies']
+/* The whole of the phone's storage, walked to the bottom.
+ *
+ * Naming folders meant guessing which ones "count" — DCIM but not
+ * Movies, Camera but not WhatsApp — and every guess left pictures
+ * behind on somebody's phone. The empty string is the storage root. */
+export const DEFAULT_SOURCES = ['']
 
-/* Media that arrived from an app rather than from the camera. Usually
-   the bulk of a phone's storage and rarely what someone means by "my
-   photos", so it is skipped wherever in the tree it turns up. */
-const APP_FOLDERS = [
-  'WhatsApp',
-  'Telegram',
-  'Instagram',
-  'Twitter',
-  'Messenger',
-  'Snapchat',
-  'Facebook',
-  'Signal',
-]
+/* App sandboxes, skipped by path rather than by name so that
+   Android/media — where messaging apps keep the pictures you actually
+   received — is still walked. These two are usually not even readable
+   over MTP. */
+export const EXCLUDED_PATHS = ['Android/data', 'Android/obb']
 
-/* Never copied. Leading-dot folders are caches — .thumbnails alone can
-   hold thousands of tiny files that would burn quota for nothing — and
-   wallpapers are not photographs the user took. */
-export const EXCLUDED_FOLDERS = ['Wallpapers', 'Walli Artworks', ...APP_FOLDERS]
+/* A leading dot means a cache, not a photo album: .thumbnails alone can
+   hold thousands of derived files that would burn quota for nothing.
+   That is the only name-based rule left. */
+export const isExcludedFolder = (name) => String(name ?? '').startsWith('.')
 
-export const isExcludedFolder = (name) =>
-  name.startsWith('.') || EXCLUDED_FOLDERS.includes(name)
-
-/* The walk already skips these, but a source path is checked again on
-   this side so the rule holds even if the device listing ever arrives
-   from somewhere else. */
-export const isExcludedPath = (path) =>
-  String(path ?? '').split('/').some(isExcludedFolder)
+export const isExcludedPath = (path) => {
+  const clean = String(path ?? '')
+  if (clean.split('/').some(isExcludedFolder)) return true
+  return EXCLUDED_PATHS.some((skip) => clean === skip || clean.startsWith(`${skip}/`))
+}
 
 /* HEIC is the Pixel/iPhone default and DNG the raw format. */
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'dng', 'raw', 'gif']

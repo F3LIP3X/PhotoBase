@@ -5,7 +5,7 @@ import { tmpdir } from 'os'
 import { app } from 'electron'
 import {
   DEFAULT_SOURCES,
-  EXCLUDED_FOLDERS,
+  EXCLUDED_PATHS,
   isExcludedPath,
   isMediaFile,
 } from './androidLayout'
@@ -30,9 +30,12 @@ $ErrorActionPreference = 'SilentlyContinue'
 
 $skip = @($Excluded -split ',' | Where-Object { $_ })
 
-# Capped rather than trusted: a device that reports a folder loop must
-# not turn the scan into an infinite one.
-$MAX_DEPTH = 8
+# The walk now starts at the storage root, so it needs room for the
+# deeper places apps keep media —
+# Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images is six down.
+# Still capped: a device that reports a folder loop must not turn the
+# scan into an infinite one.
+$MAX_DEPTH = 12
 
 $shell = New-Object -ComObject Shell.Application
 $device = $shell.NameSpace(17).Items() | Where-Object { $_.Name -eq $DeviceName }
@@ -48,17 +51,21 @@ function Get-Sub($folder, $name) {
   return $hit.GetFolder
 }
 
-# Every folder under a source is descended into, because which subfolder
-# a camera app picks is its own business: Movies/Camera, DCIM/100ANDRO
-# and DCIM/OpenCamera are all somebody's default.
+# Every folder is descended into. Which subfolder a camera, a vendor or
+# a messaging app picks is its own business, and the only way not to miss
+# any of them is to stop guessing and walk the lot.
 function Walk($folder, $path, $found, $depth) {
   if ($null -eq $folder -or $depth -gt $MAX_DEPTH) { return }
 
   foreach ($item in $folder.Items()) {
     if ($item.IsFolder) {
       $name = $item.Name
-      if ($name.StartsWith('.') -or ($skip -contains $name)) { continue }
-      Walk $item.GetFolder "$path/$name" $found ($depth + 1)
+      if ($name.StartsWith('.')) { continue }
+
+      $next = if ($path -eq '') { $name } else { "$path/$name" }
+      if ($skip -contains $next) { continue }
+
+      Walk $item.GetFolder $next $found ($depth + 1)
       continue
     }
 
@@ -75,7 +82,10 @@ $found = New-Object System.Collections.ArrayList
 
 foreach ($src in ($Sources -split ',')) {
   $cur = $root
-  foreach ($part in ($src -split '/')) { $cur = Get-Sub $cur $part }
+  # An empty source is the storage root itself.
+  if ($src -ne '') {
+    foreach ($part in ($src -split '/')) { $cur = Get-Sub $cur $part }
+  }
   if ($null -eq $cur) { continue }
   Walk $cur $src $found 0
 }
@@ -156,7 +166,9 @@ $folderCache = @{}
 foreach ($entry in $plan) {
   if (-not $folderCache.ContainsKey($entry.source)) {
     $cur = $root
-    foreach ($part in ($entry.source -split '/')) { $cur = Get-Sub $cur $part }
+    if ($entry.source -ne '') {
+      foreach ($part in ($entry.source -split '/')) { $cur = Get-Sub $cur $part }
+    }
     $folderCache[$entry.source] = $cur
   }
   $sourceFolder = $folderCache[$entry.source]
@@ -273,7 +285,7 @@ export async function planBackup({ deviceName, libraryPath, quotaGB }) {
     '-Sources',
     DEFAULT_SOURCES.join(','),
     '-Excluded',
-    EXCLUDED_FOLDERS.join(','),
+    EXCLUDED_PATHS.join(','),
   ])
 
   let items = []
