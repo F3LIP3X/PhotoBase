@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PiFolderOpenBold, PiWarningFill, PiArrowCounterClockwiseBold } from 'react-icons/pi';
+import {
+  PiFolderOpenBold,
+  PiWarningFill,
+  PiArrowCounterClockwiseBold,
+  PiLockKeyFill,
+  PiLockKeyOpenFill,
+} from 'react-icons/pi';
 import { useShell } from '../hooks/useShell';
 import { formatSize } from '../format';
 
@@ -49,6 +55,11 @@ const Settings = () => {
     <div className="flex max-w-[720px] flex-col gap-8">
       <StorageSection storage={storage} quotaGB={config.quotaGB} />
       <LibrarySection config={config} onChange={() => navigate('/configurar')} />
+      <PasswordSection
+        hasPassword={config.hasPassword}
+        onChanged={load}
+        onLock={() => navigate('/bloqueo', { replace: true })}
+      />
       <DangerSection onDone={() => navigate('/', { replace: true })} />
     </div>
   );
@@ -147,6 +158,148 @@ const LibrarySection = ({ config, onChange }) => (
       </button>
     </div>
   </section>
+);
+
+/* The lock is a lock on the app, not on the files: that is said here in
+   as many words, because a password field implies more protection than
+   this one gives. */
+const PasswordSection = ({ hasPassword, onChanged, onLock }) => {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [repeat, setRepeat] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [done, setDone] = useState(null);
+
+  const reset = () => {
+    setCurrent('');
+    setNext('');
+    setRepeat('');
+  };
+
+  const run = async (task, message) => {
+    setBusy(true);
+    setError(null);
+    setDone(null);
+    try {
+      await task();
+      reset();
+      setDone(message);
+      await onChanged();
+    } catch (cause) {
+      setError(cause?.message ?? 'No se pudo completar la operación.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const save = (event) => {
+    event.preventDefault();
+    if (next !== repeat) {
+      setError('Las dos contraseñas no coinciden.');
+      return;
+    }
+    run(
+      () => globalThis.api.auth.set(next, current),
+      hasPassword ? 'Contraseña actualizada.' : 'Contraseña establecida.',
+    );
+  };
+
+  return (
+    <section>
+      <h2 className="eyebrow mb-3 text-ink-3">Contraseña</h2>
+
+      <div className="glass rounded-md px-5 py-5">
+        <div className="flex items-start gap-4">
+          <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--glass-bg-strong)]">
+            {hasPassword ? (
+              <PiLockKeyFill className="text-[18px] text-accent" />
+            ) : (
+              <PiLockKeyOpenFill className="text-[18px] text-ink-3" />
+            )}
+          </span>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-medium text-ink">
+              {hasPassword ? 'PhotoBase pide contraseña al abrirse' : 'Sin contraseña'}
+            </p>
+            <p className="mt-1 text-[13px] leading-relaxed text-ink-3">
+              Impide que alguien abra PhotoBase en este equipo. No cifra los archivos: tu
+              biblioteca sigue siendo una carpeta normal y quien llegue a ella desde el
+              explorador puede ver las fotos igual.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={save} className="mt-4 flex flex-col gap-2">
+          {hasPassword && (
+            <Field
+              value={current}
+              onChange={setCurrent}
+              placeholder="Contraseña actual"
+            />
+          )}
+          <Field
+            value={next}
+            onChange={setNext}
+            placeholder={hasPassword ? 'Nueva contraseña' : 'Contraseña'}
+          />
+          <Field value={repeat} onChange={setRepeat} placeholder="Repite la contraseña" />
+
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <button
+              type="submit"
+              disabled={busy || !next || !repeat || (hasPassword && !current)}
+              className="rounded-full bg-accent px-5 py-2 text-[13px] font-semibold text-accent-ink transition-opacity duration-200 hover:opacity-90 disabled:opacity-30"
+            >
+              {hasPassword ? 'Cambiar' : 'Establecer'}
+            </button>
+
+            {hasPassword && (
+              <>
+                <button
+                  type="button"
+                  disabled={busy || !current}
+                  onClick={() =>
+                    run(() => globalThis.api.auth.clear(current), 'Contraseña eliminada.')
+                  }
+                  className="rounded-full border border-[var(--glass-brd)] px-4 py-2 text-[13px] font-medium text-ink-2 transition-colors duration-200 hover:border-accent hover:text-ink disabled:opacity-40"
+                >
+                  Quitar contraseña
+                </button>
+
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    await globalThis.api.auth.lock();
+                    onLock();
+                  }}
+                  className="ml-auto rounded-full border border-[var(--glass-brd)] px-4 py-2 text-[13px] font-medium text-ink-2 transition-colors duration-200 hover:border-accent hover:text-ink disabled:opacity-40"
+                >
+                  Bloquear ahora
+                </button>
+              </>
+            )}
+          </div>
+        </form>
+
+        {error && <p className="mt-3 text-[13px] text-accent-2">{error}</p>}
+        {done && <p className="mt-3 text-[13px] text-ink-2">{done}</p>}
+      </div>
+    </section>
+  );
+};
+
+const Field = ({ value, onChange, placeholder }) => (
+  <input
+    type="password"
+    value={value}
+    onChange={(event) => onChange(event.target.value)}
+    placeholder={placeholder}
+    aria-label={placeholder}
+    className="h-10 w-full rounded-full bg-[var(--glass-bg-strong)] px-4 text-[13px] text-ink outline-none placeholder:text-ink-3"
+  />
 );
 
 /* Two actions that are not variations of each other: one forgets, one
