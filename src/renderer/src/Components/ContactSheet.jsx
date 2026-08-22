@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PiStarFill, PiPlayFill } from 'react-icons/pi';
 import Lightbox from './Lightbox';
-import { mediaUrl } from '../hooks/useLibrary';
+import { thumbUrl } from '../hooks/useLibrary';
 
 const isVideo = (name) => /\.(mp4|mov|m4v|3gp)$/i.test(name);
 
@@ -33,7 +33,7 @@ const ContactSheet = ({ groups, library }) => {
                 className="group relative overflow-hidden rounded-sm bg-[var(--frame)] shadow-sm transition-transform duration-300 ease-glass hover:z-10 hover:scale-[1.04]"
               >
                 <img
-                  src={mediaUrl(photo.path)}
+                  src={thumbUrl(photo.path)}
                   alt={photo.name}
                   loading="lazy"
                   className="h-full w-full object-cover"

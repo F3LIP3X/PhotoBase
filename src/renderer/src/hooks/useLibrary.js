@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 const bridge = () => globalThis.api?.library ?? null;
 
 export const mediaUrl = (path) => bridge()?.url(path) ?? '';
+export const thumbUrl = (path) => bridge()?.thumbUrl(path) ?? '';
 
 export function useLibrary() {
   const [groups, setGroups] = useState([]);

@@ -1,16 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
-import Mark from './Mark';
 import { SECTIONS } from '../navigation';
 
 const Rail = () => {
   const { pathname } = useLocation();
 
   return (
-    <nav className="glass absolute bottom-4 left-4 top-4 z-20 flex w-[76px] flex-col items-center gap-1 rounded-lg py-4">
-      <Link to="/" className="mb-3 shrink-0" aria-label="Inicio">
-        <Mark size={28} />
-      </Link>
-
+    /* No brand mark here: it read as a duplicate of the Fotos icon, and
+       the toolbar already names the section. */
+    <nav className="glass absolute bottom-4 left-4 top-4 z-20 flex w-[76px] flex-col items-center justify-center gap-1 rounded-lg py-4">
       {SECTIONS.map(({ path, label, icon: Icon }) => {
         const active = pathname === path;
         return (
