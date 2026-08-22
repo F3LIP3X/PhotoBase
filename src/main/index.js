@@ -14,7 +14,7 @@ import {
 import { libraryUsage, libraryBreakdown } from './library/usage'
 import { runBackup } from './devices/backup'
 import { resetConfiguration, wipeLibrary } from './library/reset'
-import { metadataFor, indexLibrary } from './library/metadata'
+import { metadataFor, indexLibrary, knownMetadata } from './library/metadata'
 import { scanLibrary, buildFacets } from './library/scan'
 import {
   readMeta,
@@ -226,7 +226,21 @@ function registerSettingsHandlers() {
       const { libraryPath } = readSettings()
       const { groups, total } = await scanLibrary(libraryPath)
       const meta = readMeta(libraryPath)
-      return { groups, total, favorites: meta.favorites }
+      const exif = knownMetadata()
+
+      /* Camera and lens ride along with the photo so the search box can
+         match on them without a round trip per keystroke. Whatever the
+         background pass has not reached yet simply comes back null. */
+      const withExif = groups.map((group) => ({
+        ...group,
+        photos: group.photos.map((photo) => ({
+          ...photo,
+          camera: exif[photo.path]?.camera ?? null,
+          lens: exif[photo.path]?.lens ?? null,
+        })),
+      }))
+
+      return { groups: withExif, total, favorites: meta.favorites }
     }),
   )
 
