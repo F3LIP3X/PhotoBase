@@ -58,12 +58,16 @@ foreach ($src in ($Sources -split ',')) {
 `
 
 /* CopyHere is asynchronous and has no completion callback, so each file
-   is followed by a wait on the destination appearing. Flags: 4 no
-   progress dialog, 16 yes-to-all, 512 no new-folder prompt, 1024 no
-   error UI — this runs unattended behind our own progress bar. */
+   is followed by a wait on the destination reaching the size it has on
+   the phone. Flags: 4 no progress dialog, 16 yes-to-all, 512 no
+   new-folder prompt, 1024 no error UI — this runs unattended behind our
+   own progress bar. */
 const COPY_SCRIPT = `
 param([string]$DeviceName, [string]$PlanPath)
 $ErrorActionPreference = 'SilentlyContinue'
+
+# 60 s without the file growing, at 500 ms a poll.
+$STALL_LIMIT = 120
 
 $plan = Get-Content -Raw -LiteralPath $PlanPath | ConvertFrom-Json
 $shell = New-Object -ComObject Shell.Application
@@ -76,6 +80,40 @@ function Get-Sub($folder, $name) {
   $hit = @($folder.Items() | Where-Object { $_.IsFolder -and $_.Name -eq $name })[0]
   if ($null -eq $hit) { return $null }
   return $hit.GetFolder
+}
+
+function Get-Size($path) {
+  try { return (Get-Item -LiteralPath $path -Force -ErrorAction Stop).Length } catch { return -1 }
+}
+
+# Existence is not completion. CopyHere returns at once and the shell
+# then grows the destination, so a Test-Path check calls a 2 GB video
+# done a fraction of a second in and leaves a truncated file behind.
+# Byte length is the only completion signal MTP gives us.
+function Test-Copied($path, $expected) {
+  $size = Get-Size $path
+  if ($size -lt 0) { return $false }
+  if ($expected -gt 0) { return ($size -eq $expected) }
+  return ($size -gt 0)
+}
+
+# Progress is the deadline, not the clock: a long video over USB
+# legitimately takes minutes, so the wait only ends when the file stops
+# growing altogether.
+function Wait-Copy($path, $expected) {
+  $seen = -1
+  $idle = 0
+
+  while ($idle -lt $STALL_LIMIT) {
+    if ($expected -gt 0 -and (Test-Copied $path $expected)) { return $true }
+
+    $size = Get-Size $path
+    if ($size -gt $seen) { $seen = $size; $idle = 0 } else { $idle++ }
+
+    Start-Sleep -Milliseconds 500
+  }
+
+  return (Test-Copied $path $expected)
 }
 
 $folderCache = @{}
@@ -97,6 +135,13 @@ foreach ($entry in $plan) {
   }
 
   $target = Join-Path $entry.destDir $entry.name
+
+  # Anything already there that is the wrong length is the wreckage of an
+  # interrupted run, and gets pulled again rather than trusted.
+  if ((Get-Size $target) -ge 0 -and -not (Test-Copied $target $entry.size)) {
+    Remove-Item -LiteralPath $target -Force
+  }
+
   if (-not (Test-Path -LiteralPath $target)) {
     $dest = $shell.NameSpace($entry.destDir)
     if ($null -eq $dest) {
@@ -104,17 +149,15 @@ foreach ($entry in $plan) {
       continue
     }
     $dest.CopyHere($item, 4 + 16 + 512 + 1024)
-
-    $waited = 0
-    while (-not (Test-Path -LiteralPath $target) -and $waited -lt 120) {
-      Start-Sleep -Milliseconds 250
-      $waited++
-    }
+    Wait-Copy $target $entry.size | Out-Null
   }
 
-  if (Test-Path -LiteralPath $target) {
+  if (Test-Copied $target $entry.size) {
     Write-Output ('{"type":"copied","name":' + ($entry.name | ConvertTo-Json) + ',"size":' + $entry.size + '}')
   } else {
+    # A half-written file must not survive the run: the next backup would
+    # see it, and a partial video is worse than a missing one.
+    Remove-Item -LiteralPath $target -Force
     Write-Output ('{"type":"failed","name":' + ($entry.name | ConvertTo-Json) + '}')
   }
 }

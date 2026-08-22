@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, statSync } from 'fs'
 import { join } from 'path'
 
 const INDEX_FILE = '.photobase-index.json'
@@ -33,12 +33,26 @@ export function saveIndex(libraryPath, index) {
   writeFileSync(indexPath(libraryPath), JSON.stringify(index), 'utf8')
 }
 
-/* Two independent guards, because the index is a convenience and must
-   never be the only thing standing between the user and a duplicate:
-   the recorded key, and the file already sitting at the destination. */
+/* The file on disk outranks the index, because the index records an
+   intention and the disk records the result. A copy interrupted midway
+   through a large video leaves a short file whose key was already
+   written, and trusting that key would strand the file half-copied
+   forever. A length that does not match the device means not copied. */
 export function alreadyCopied(index, libraryPath, item, destinationRelative) {
-  if (index.entries[mediaKey(item)]) return true
-  return existsSync(join(libraryPath, destinationRelative))
+  const expected = Number(item.size) || 0
+
+  let onDisk = null
+  try {
+    onDisk = statSync(join(libraryPath, destinationRelative))
+  } catch {
+    /* Nothing at the destination: the index has the only say below. */
+  }
+
+  if (onDisk) return expected > 0 ? onDisk.size === expected : true
+
+  /* Recorded but absent means the user deleted or moved it on purpose,
+     so it is not dragged off the phone a second time. */
+  return Boolean(index.entries[mediaKey(item)])
 }
 
 export function recordCopy(index, item, destinationRelative) {
