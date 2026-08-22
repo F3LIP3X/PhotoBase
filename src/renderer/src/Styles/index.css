@@ -249,6 +249,17 @@
   }
 }
 
+/* The indeterminate bar. A scan has no total to measure against, so the
+   bar says "moving" instead of inventing a percentage. */
+@keyframes sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

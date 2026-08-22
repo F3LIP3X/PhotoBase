@@ -1,10 +1,43 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const bridge = () => globalThis.api?.backup ?? null;
+const LOG_LIMIT = 80;
+
+/* One line of "what is happening right now", derived from a progress
+   update. A folder that reports itself again with a higher count
+   replaces its own line rather than adding a new one — otherwise a big
+   folder buries the rest of the log under itself. */
+function describe(update) {
+  if (update?.phase === 'scan') {
+    return {
+      key: `scan:${update.path}`,
+      at: Date.now(),
+      text: update.path,
+      meta: `${(update.found ?? 0).toLocaleString('es-ES')} archivos`,
+    };
+  }
+
+  if (update?.phase === 'planned') {
+    return {
+      key: 'planned',
+      at: Date.now(),
+      text: 'Lectura terminada',
+      meta: `${update.planned} nuevos · ${update.skipped} ya estaban`,
+    };
+  }
+
+  if (update?.phase === 'copy' && update.name) {
+    return { key: `copy:${update.name}`, at: Date.now(), text: update.name, meta: null };
+  }
+
+  return null;
+}
 
 export function useBackup() {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [startedAt, setStartedAt] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const live = useRef(true);
@@ -15,7 +48,18 @@ export function useBackup() {
     if (!api) return undefined;
 
     const unsubscribe = api.onProgress((update) => {
-      if (live.current) setProgress(update);
+      if (!live.current) return;
+
+      setProgress(update);
+
+      const entry = describe(update);
+      if (!entry) return;
+
+      setEvents((current) => {
+        const last = current[current.length - 1];
+        if (last?.key === entry.key) return [...current.slice(0, -1), entry];
+        return [...current, entry].slice(-LOG_LIMIT);
+      });
     });
 
     return () => {
@@ -32,6 +76,8 @@ export function useBackup() {
     setError(null);
     setResult(null);
     setProgress(null);
+    setEvents([]);
+    setStartedAt(Date.now());
 
     try {
       const outcome = await api.start(deviceName);
@@ -46,5 +92,7 @@ export function useBackup() {
     }
   }, []);
 
-  return { start, running, progress, result, error };
+  /* The log outlives the run on purpose: when something goes wrong, the
+     last thing it was doing is the first thing worth reading. */
+  return { start, running, progress, events, startedAt, result, error };
 }
