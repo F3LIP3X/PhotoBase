@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PiStarFill, PiPlayFill, PiCheckBold, PiTrashBold } from 'react-icons/pi';
+import {
+  PiStarFill,
+  PiPlayFill,
+  PiCheckBold,
+  PiTrashBold,
+  PiCaretLeftBold,
+  PiCaretRightBold,
+} from 'react-icons/pi';
 import Lightbox from './Lightbox';
 import { thumbUrl } from '../hooks/useLibrary';
 
@@ -32,8 +39,45 @@ const Tile = ({ photo }) => {
   );
 };
 
-const ContactSheet = ({ groups, library }) => {
+/* Five thousand tiles is five thousand DOM nodes and five thousand
+   thumbnail requests, which is more than the grid can hold up. Lazy
+   loading spares the network but not the layout. */
+const PAGE_SIZE = 200;
+
+/* First, last, and a window around the current page. Anything else is a
+   dot: a library of five thousand photos is twenty-six pages, and
+   twenty-six buttons is not navigation. */
+function pageNumbers(current, pages) {
+  if (pages <= 7) return [...Array(pages).keys()];
+
+  const around = [current - 1, current, current + 1].filter((n) => n > 0 && n < pages - 1);
+  const shown = [...new Set([0, ...around, pages - 1])].sort((a, b) => a - b);
+
+  const out = [];
+  let previous = null;
+  for (const number of shown) {
+    if (previous !== null && number - previous > 1) out.push(null);
+    out.push(number);
+    previous = number;
+  }
+  return out;
+}
+
+const PageButton = ({ onClick, disabled, label, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    aria-label={label}
+    className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--glass-brd)] text-ink-2 transition-colors duration-200 hover:border-accent hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+  >
+    {children}
+  </button>
+);
+
+const ContactSheet = ({ groups, library, pageSize = PAGE_SIZE }) => {
   const [open, setOpen] = useState(null);
+  const [page, setPage] = useState(0);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState(() => new Set());
   /* Where the last plain click landed, so shift-click has something to
@@ -41,13 +85,51 @@ const ContactSheet = ({ groups, library }) => {
   const [anchor, setAnchor] = useState(null);
   const [working, setWorking] = useState(false);
 
-  /* The viewer steps through every photo on screen, not just the month
-     it was opened from. */
-  const flat = groups.flatMap((group) => group.photos);
+  /* Paged over the flattened library rather than by month, so every page
+     is the same size — months range from two photos to four hundred. The
+     month headings are rebuilt from whatever the page happens to hold. */
+  const entries = useMemo(
+    () => groups.flatMap((group) => group.photos.map((photo) => ({ photo, group }))),
+    [groups],
+  );
+
+  const pages = Math.max(1, Math.ceil(entries.length / pageSize));
+  const current = Math.min(page, pages - 1);
+
+  const paged = useMemo(() => {
+    const slice = entries.slice(current * pageSize, current * pageSize + pageSize);
+    const out = [];
+
+    for (const { photo, group } of slice) {
+      const last = out[out.length - 1];
+      if (last && last.id === group.id) last.photos.push(photo);
+      else out.push({ ...group, photos: [photo] });
+    }
+
+    return out.map((group) => ({ ...group, count: group.photos.length }));
+  }, [entries, current, pageSize]);
+
+  /* Deleting or searching can shrink the library under a page that no
+     longer exists. */
+  useEffect(() => {
+    if (page > pages - 1) setPage(0);
+  }, [page, pages]);
+
+  /* The viewer steps through the page on screen, not the whole library:
+     the arrow keys should land where the eye can follow. */
+  const flat = useMemo(() => paged.flatMap((group) => group.photos), [paged]);
   const positions = useMemo(
     () => new Map(flat.map((photo, at) => [photo.path, at])),
     [flat],
   );
+
+  const goTo = (next) => {
+    setPage(next);
+    leaveSelection();
+    /* The scroller belongs to the Shell, and landing halfway down a
+       fresh page reads as a glitch. */
+    document.querySelector('main')?.scrollTo({ top: 0 });
+  };
 
   const openAt = (photo) => setOpen(flat.findIndex((item) => item.path === photo.path));
 
@@ -139,7 +221,7 @@ const ContactSheet = ({ groups, library }) => {
         )}
       </div>
 
-      {groups.map((group) => (
+      {paged.map((group) => (
         <section key={group.id} className="mb-10 last:mb-0">
           <div className="mb-3 flex items-baseline gap-3">
             <h2 className="text-[15px] capitalize text-ink">{group.label}</h2>
@@ -195,6 +277,51 @@ const ContactSheet = ({ groups, library }) => {
         </section>
       ))}
 
+      {pages > 1 && (
+        <nav
+          aria-label="Paginación"
+          className="mt-10 flex items-center justify-center gap-2"
+        >
+          <PageButton
+            onClick={() => goTo(current - 1)}
+            disabled={current === 0}
+            label="Página anterior"
+          >
+            <PiCaretLeftBold />
+          </PageButton>
+
+          {pageNumbers(current, pages).map((entry, at) =>
+            entry === null ? (
+              <span key={`hueco-${at}`} className="px-1 text-ink-3">
+                ·
+              </span>
+            ) : (
+              <button
+                key={entry}
+                type="button"
+                onClick={() => goTo(entry)}
+                aria-current={entry === current ? 'page' : undefined}
+                className={`h-9 min-w-9 rounded-full px-3 text-[13px] transition-colors duration-200 ${
+                  entry === current
+                    ? 'bg-accent font-semibold text-accent-ink'
+                    : 'border border-[var(--glass-brd)] text-ink-2 hover:border-accent hover:text-ink'
+                }`}
+              >
+                {entry + 1}
+              </button>
+            ),
+          )}
+
+          <PageButton
+            onClick={() => goTo(current + 1)}
+            disabled={current === pages - 1}
+            label="Página siguiente"
+          >
+            <PiCaretRightBold />
+          </PageButton>
+        </nav>
+      )}
+
       {selecting && selected.size > 0 && (
         <div className="glass fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-4 rounded-full py-2.5 pl-6 pr-2.5 shadow-lg">
           <span className="text-[13px] text-ink">
@@ -205,7 +332,7 @@ const ContactSheet = ({ groups, library }) => {
             onClick={() => setSelected(new Set(flat.map((photo) => photo.path)))}
             className="eyebrow text-ink-3 transition-colors duration-200 hover:text-ink"
           >
-            Todas
+            {pages > 1 ? 'Toda la página' : 'Todas'}
           </button>
           <button
             type="button"
