@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   PiXBold,
   PiCaretLeftBold,
@@ -37,7 +38,11 @@ const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, 
 
   if (!photo) return null;
 
-  return (
+  /* Rendered into body on purpose: the scroller it would otherwise live
+     in is a positioned, z-indexed element, and that stacking context
+     traps the overlay underneath the rail and toolbar — which hid these
+     controls, including the only way to close the photo. */
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-xl"
       role="dialog"
@@ -109,7 +114,8 @@ const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, 
           <PiCaretRightBold />
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 
