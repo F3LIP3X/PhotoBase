@@ -7,6 +7,31 @@ import { thumbUrl } from '../hooks/useLibrary';
    never has to read a filename to know what it is holding. */
 const extensionOf = (name) => name.slice(name.lastIndexOf('.') + 1).toUpperCase();
 
+/* A video's still is pulled out of the file itself. When that fails —
+   no ffmpeg, or a file nothing can open — the tile falls back to saying
+   what it is rather than pointing an <img> at an .mp4. */
+const Tile = ({ photo }) => {
+  const [broken, setBroken] = useState(false);
+
+  if (broken) {
+    return (
+      <span className="flex h-full w-full items-center justify-center bg-[var(--frame)]">
+        <PiPlayFill className="text-[20px] text-ink-3 transition-colors duration-300 ease-glass group-hover:text-accent" />
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={thumbUrl(photo.path)}
+      alt={photo.name}
+      loading="lazy"
+      onError={() => setBroken(true)}
+      className="h-full w-full object-cover"
+    />
+  );
+};
+
 const ContactSheet = ({ groups, library }) => {
   const [open, setOpen] = useState(null);
 
@@ -48,26 +73,16 @@ const ContactSheet = ({ groups, library }) => {
                 onClick={() => openAt(photo)}
                 className="group relative overflow-hidden rounded-sm bg-[var(--frame)] shadow-sm transition-transform duration-300 ease-glass hover:z-10 hover:scale-[1.04]"
               >
-                {photo.kind === 'video' ? (
-                  /* A video has no still to show without a decoder, so the
-                     tile says what it is instead of pointing an <img> at an
-                     .mp4 and rendering a broken frame. */
-                  <span className="flex h-full w-full items-center justify-center bg-[var(--frame)]">
-                    <PiPlayFill className="text-[20px] text-ink-3 transition-colors duration-300 ease-glass group-hover:text-accent" />
-                  </span>
-                ) : (
-                  <img
-                    src={thumbUrl(photo.path)}
-                    alt={photo.name}
-                    loading="lazy"
-                    className="h-full w-full object-cover"
-                  />
-                )}
+                <Tile photo={photo} />
 
                 {photo.kind === 'video' && (
-                  <span className="eyebrow absolute bottom-1 left-1.5 text-[9px] text-ink-3">
-                    {extensionOf(photo.name)}
-                  </span>
+                  <>
+                    <span className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/55 to-transparent" />
+                    <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 text-white drop-shadow">
+                      <PiPlayFill className="text-[11px]" />
+                      <span className="eyebrow text-[9px]">{extensionOf(photo.name)}</span>
+                    </span>
+                  </>
                 )}
 
                 {library.isFavorite(photo.path) && (

@@ -1,5 +1,5 @@
 import { app, shell, dialog, BrowserWindow, ipcMain, Notification } from 'electron'
-import { join, resolve, sep } from 'path'
+import { join, resolve, sep, basename } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createDeviceWatcher } from './devices/watcher'
@@ -15,6 +15,7 @@ import { libraryUsage, libraryBreakdown } from './library/usage'
 import { runBackup } from './devices/backup'
 import { resetConfiguration, wipeLibrary } from './library/reset'
 import { metadataFor, indexLibrary, knownMetadata } from './library/metadata'
+import { playableFor, videoToolsReady } from './library/video'
 import { scanLibrary, buildFacets } from './library/scan'
 import {
   readMeta,
@@ -374,6 +375,25 @@ function registerSettingsHandlers() {
   /* Codecs the app cannot decode are still perfectly good files, so the
      viewer can hand one to whatever the system uses instead. Confined to
      the library, like every other path this app accepts. */
+  /* Slow by nature — it re-encodes the whole video — so the renderer
+     shows a wait while this runs rather than pretending it is instant. */
+  ipcMain.handle(
+    'library:playable',
+    guarded('library:playable', async (_event, path) => {
+      if (!videoToolsReady()) return null
+
+      const { libraryPath } = readSettings()
+      if (!libraryPath || !path) return null
+
+      const root = resolve(libraryPath)
+      const target = resolve(join(root, path))
+      if (target !== root && !target.startsWith(root + sep)) return null
+
+      const made = await playableFor(target)
+      return made ? basename(made) : null
+    }),
+  )
+
   ipcMain.handle(
     'library:open',
     guarded('library:open', async (_event, path) => {

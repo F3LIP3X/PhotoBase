@@ -1,4 +1,4 @@
-import { protocol } from 'electron'
+import { protocol, app } from 'electron'
 import { createReadStream, statSync } from 'fs'
 import { Readable } from 'stream'
 import { join, resolve, sep } from 'path'
@@ -6,6 +6,8 @@ import { readSettings } from '../settings'
 import { logError } from '../log'
 import { isUnlocked } from '../auth'
 import { thumbnailFor } from './thumbnails'
+import { posterFor } from './video'
+import { isVideoFile } from '../devices/androidLayout'
 
 export const MEDIA_SCHEME = 'photobase'
 
@@ -115,6 +117,16 @@ export function handleMediaRequests() {
       const relative = decodeURIComponent(url.pathname).replace(/^\/+/, '')
       if (!relative) return new Response('Not found', { status: 404 })
 
+      /* Re-encoded copies of videos Chromium cannot open. They live in
+         the app's own data, never in the library, and only a bare file
+         name is accepted so this cannot walk anywhere. */
+      if (url.hostname === 'cache') {
+        if (relative.includes('/') || relative.includes('\\')) {
+          return new Response('Forbidden', { status: 403 })
+        }
+        return serveFile(join(app.getPath('userData'), 'playable', relative), request)
+      }
+
       const root = resolve(libraryPath)
       const target = resolve(join(root, relative))
 
@@ -126,8 +138,16 @@ export function handleMediaRequests() {
          full 3 MB frames to a wall of 112px tiles is what made scrolling
          crawl. */
       if (url.hostname === 'thumb') {
-        const thumb = thumbnailFor(target, relative)
+        /* A video has no still to resize, so one gets pulled out of it. */
+        const thumb = isVideoFile(relative)
+          ? await posterFor(target)
+          : thumbnailFor(target, relative)
+
         if (thumb) return serveFile(thumb, request)
+
+        /* No poster means no ffmpeg or an unreadable file. Saying so is
+           better than handing the grid a whole video to put in an <img>. */
+        if (isVideoFile(relative)) return new Response('No poster', { status: 404 })
       }
 
       return serveFile(target, request)

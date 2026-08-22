@@ -32,6 +32,7 @@ que tú elijas y nadie más los ve.
 | **Fotos y vídeos** | JPEG, PNG, HEIC, DNG, MP4, MOV, MKV, WEBM… |
 | **Límite de almacenamiento** | Tú pones el tope en GB y la app no lo pasa |
 | **Metadatos EXIF** | Cámara, objetivo, apertura, ISO y ubicación |
+| **Vídeo con portada** | Fotograma extraído del propio archivo, y conversión si el códec no se reproduce |
 | **Papelera con 30 días** | Borrar no es perder |
 | **Bloqueo por contraseña** | Opcional, con hash scrypt |
 
@@ -139,7 +140,8 @@ pnpm install
 pnpm build:win     # o build:linux / build:mac
 ```
 
-El instalador queda en `dist/`.
+El instalador queda en `dist/`. El script de compilación descarga antes los binarios de
+ffmpeg (`pnpm fetch:ffmpeg`), que pesan unos 80 MB por plataforma y no viven en el repo.
 
 ---
 
@@ -185,8 +187,9 @@ abres el panel, no se hace ninguna petición de red.
 - **La copia desde el móvil es solo para Windows.** Usa el shell de Windows por COM
   para hablar MTP. La aplicación arranca y gestiona la biblioteca en Linux y macOS,
   pero ahí no detecta teléfonos.
-- **Los vídeos no tienen miniatura.** Generarlas necesitaría un decodificador; la
-  cuadrícula dibuja su propia tarjeta con el formato del archivo.
+- **HEVC necesita conversión.** Los móviles graban en H.265 y Chromium no trae ese
+  códec, así que el visor ofrece re-codificar una copia la primera vez que abres uno.
+  Tarda aproximadamente lo que dure el vídeo y se queda en caché.
 - **No hay reconocimiento de lugares.** Se guardan las coordenadas del EXIF, pero no
   se traducen a nombres de sitio, así que no se puede buscar por lugar.
 - **El primer escaneo de un móvil lleno tarda.** Se recorre todo el almacenamiento
@@ -195,5 +198,6 @@ abres el panel, no se hace ninguna petición de red.
 ---
 
 <div align="center">
-<sub>Proyecto personal de <a href="https://github.com/F3LIP3X">F3LIP3X</a>.</sub>
+<sub>Proyecto personal de <a href="https://github.com/F3LIP3X">F3LIP3X</a>.<br>
+Distribuido bajo <a href="LICENSE">GPL-3.0-or-later</a>, por incluir binarios de FFmpeg.</sub>
 </div>

@@ -10,6 +10,9 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+
+# ffmpeg binaries: ~80 MB each, fetched by pnpm fetch:ffmpeg
+resources/ffmpeg
 out
 *.local
 

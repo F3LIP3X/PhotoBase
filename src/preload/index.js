@@ -50,6 +50,11 @@ const api = {
     backups: () => call('library:backups'),
     open: (path) => call('library:open', path),
 
+    /* Returns the file name of a re-encoded copy, playable through the
+       cache host of the media scheme. */
+    playable: (path) => call('library:playable', path),
+    playableUrl: (name) => `photobase://cache/${encodeURIComponent(name)}`,
+
     /* Photos are served through a scheme that only reaches inside the
        library, so the renderer never handles filesystem paths. */
     url: (relativePath) =>
