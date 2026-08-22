@@ -12,7 +12,8 @@ import {
 import {
   loadIndex,
   saveIndex,
-  alreadyCopied,
+  mediaKey,
+  planDestination,
   recordCopy,
   destinationFor,
 } from '../library/index-store'
@@ -168,7 +169,7 @@ foreach ($entry in $plan) {
     New-Item -ItemType Directory -Path $entry.destDir -Force | Out-Null
   }
 
-  $target = Join-Path $entry.destDir $entry.name
+  $target = Join-Path $entry.destDir $entry.destName
 
   # Anything already there that is the wrong length is the wreckage of an
   # interrupted run, and gets pulled again rather than trusted.
@@ -179,20 +180,20 @@ foreach ($entry in $plan) {
   if (-not (Test-Path -LiteralPath $target)) {
     $dest = $shell.NameSpace($entry.destDir)
     if ($null -eq $dest) {
-      Write-Output ('{"type":"failed","name":' + ($entry.name | ConvertTo-Json) + '}')
+      Write-Output ('{"type":"failed","id":' + $entry.id + ',"name":' + ($entry.destName | ConvertTo-Json) + '}')
       continue
     }
     $dest.CopyHere($item, 4 + 16 + 512 + 1024)
-    Wait-Copy $target $entry.size $entry.name
+    Wait-Copy $target $entry.size $entry.destName
   }
 
   if (Test-Copied $target $entry.size) {
-    Write-Output ('{"type":"copied","name":' + ($entry.name | ConvertTo-Json) + ',"size":' + $entry.size + '}')
+    Write-Output ('{"type":"copied","id":' + $entry.id + ',"name":' + ($entry.destName | ConvertTo-Json) + ',"size":' + $entry.size + '}')
   } else {
     # A half-written file must not survive the run: the next backup would
     # see it, and a partial video is worse than a missing one.
     Remove-Item -LiteralPath $target -Force
-    Write-Output ('{"type":"failed","name":' + ($entry.name | ConvertTo-Json) + '}')
+    Write-Output ('{"type":"failed","id":' + $entry.id + ',"name":' + ($entry.destName | ConvertTo-Json) + '}')
   }
 }
 
@@ -289,24 +290,50 @@ export async function planBackup({ deviceName, libraryPath, quotaGB }) {
   const index = loadIndex(libraryPath)
 
   const plan = []
+  /* Destinations handed out in this run, so two files from different
+     folders on the phone cannot be promised the same slot. */
+  const claimed = new Set()
+  /* And the same photo sitting in two of those folders is still one
+     photo, so it is copied once. */
+  const seen = new Set()
   let plannedBytes = 0
   let skipped = 0
 
   for (const item of media) {
-    const withDate = { ...item, takenAt: captureDate(item) }
-    const relative = destinationFor(withDate)
+    const key = mediaKey(item)
+    if (seen.has(key)) {
+      skipped += 1
+      continue
+    }
+    seen.add(key)
 
-    if (alreadyCopied(index, libraryPath, item, relative)) {
+    const withDate = { ...item, takenAt: captureDate(item) }
+    const relative = planDestination({
+      index,
+      libraryPath,
+      item,
+      relative: destinationFor(withDate),
+      claimed,
+    })
+
+    if (!relative) {
       skipped += 1
       continue
     }
 
+    claimed.add(relative)
+    const segments = relative.split('/')
+
     plan.push({
+      /* The script reports back by id: names are no longer unique now
+         that the whole tree is walked. */
+      id: plan.length,
       source: item.source,
       name: item.name,
+      destName: segments[segments.length - 1],
       size: Number(item.size) || 0,
       relative,
-      destDir: join(libraryPath, relative.split('/').slice(0, -1).join('\\')),
+      destDir: join(libraryPath, ...segments.slice(0, -1)),
     })
     plannedBytes += Number(item.size) || 0
   }
@@ -352,7 +379,7 @@ export async function runBackup({ deviceName, libraryPath, quotaGB, usedGB, onPr
   /* Bytes of the file currently in flight, which only a big video makes
      worth showing separately. */
   let inFlight = 0
-  const byName = new Map(plan.map((entry) => [entry.name, entry]))
+  const byId = new Map(plan.map((entry) => [entry.id, entry]))
 
   /* Counted in bytes as well as files, because one 2 GB clip and one
      2 MB photo are one file each and nothing like the same wait. */
@@ -383,7 +410,7 @@ export async function runBackup({ deviceName, libraryPath, quotaGB, usedGB, onPr
         }
 
         if (event.type === 'copied') {
-          const entry = byName.get(event.name)
+          const entry = byId.get(event.id)
           if (entry) {
             recordCopy(index, { name: entry.name, size: entry.size }, entry.relative)
             copiedBytes += entry.size

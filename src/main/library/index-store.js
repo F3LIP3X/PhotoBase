@@ -33,26 +33,59 @@ export function saveIndex(libraryPath, index) {
   writeFileSync(indexPath(libraryPath), JSON.stringify(index), 'utf8')
 }
 
-/* The file on disk outranks the index, because the index records an
-   intention and the disk records the result. A copy interrupted midway
-   through a large video leaves a short file whose key was already
-   written, and trusting that key would strand the file half-copied
-   forever. A length that does not match the device means not copied. */
-export function alreadyCopied(index, libraryPath, item, destinationRelative) {
-  const expected = Number(item.size) || 0
-
-  let onDisk = null
+const sizeOf = (path) => {
   try {
-    onDisk = statSync(join(libraryPath, destinationRelative))
+    return statSync(path).size
   } catch {
-    /* Nothing at the destination: the index has the only say below. */
+    return -1
+  }
+}
+
+/* IMG_0001.jpg lives in more than one folder on a phone, and a recursive
+   walk finds every one of them. They all want the same YYYY/MM slot, so
+   the later ones take a suffix rather than quietly landing on top of the
+   first and destroying it. */
+const withSuffix = (relative, attempt) => {
+  const dot = relative.lastIndexOf('.')
+  return dot < 1
+    ? `${relative}-${attempt}`
+    : `${relative.slice(0, dot)}-${attempt}${relative.slice(dot)}`
+}
+
+const MAX_ATTEMPTS = 100
+
+/* Where one file from the device should land, or null to leave it where
+   it is. The disk outranks the index, because the index records an
+   intention and the disk records the result — but only for files this
+   backup put there. Anything else under that name belongs to someone
+   else and is never overwritten. */
+export function planDestination({ index, libraryPath, item, relative, claimed }) {
+  const expected = Number(item.size) || 0
+  const recorded = index.entries[mediaKey(item)]
+
+  let candidate = relative
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    if (!claimed.has(candidate)) {
+      const onDisk = sizeOf(join(libraryPath, candidate))
+
+      /* Nothing there. A recorded file that has since gone was deleted
+         or moved on purpose, so it is not pulled off the phone again. */
+      if (onDisk < 0) return recorded && candidate === relative ? null : candidate
+
+      /* Same name and same length: it is already here. */
+      if (expected > 0 && onDisk === expected) return null
+
+      /* Our own record at the wrong length is the wreckage of a copy
+         that was interrupted — a large video, most likely — and gets
+         finished in place instead of duplicated beside itself. */
+      if (recorded?.path === candidate) return candidate
+    }
+
+    candidate = withSuffix(relative, attempt + 1)
   }
 
-  if (onDisk) return expected > 0 ? onDisk.size === expected : true
-
-  /* Recorded but absent means the user deleted or moved it on purpose,
-     so it is not dragged off the phone a second time. */
-  return Boolean(index.entries[mediaKey(item)])
+  return null
 }
 
 export function recordCopy(index, item, destinationRelative) {
