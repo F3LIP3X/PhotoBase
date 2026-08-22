@@ -28,6 +28,13 @@ const api = {
     wipe: () => call('settings:wipe'),
   },
 
+  auth: {
+    unlock: (password) => call('auth:unlock', password),
+    set: (next, current) => call('auth:set', next, current),
+    clear: (current) => call('auth:clear', current),
+    lock: () => call('auth:lock'),
+  },
+
   library: {
     usage: () => call('library:usage'),
     breakdown: () => call('library:breakdown'),

@@ -27,6 +27,7 @@ import {
 } from './library/meta'
 import { registerMediaScheme, handleMediaRequests } from './library/protocol'
 import { log, logError, installCrashHandlers, handled } from './log'
+import { isUnlocked, unlock, lock, setPassword, clearPassword } from './auth'
 
 const DEVICES_CHANNEL = 'devices:changed'
 const BACKUP_CHANNEL = 'backup:progress'
@@ -89,18 +90,18 @@ function registerDeviceHandlers() {
 
   ipcMain.handle(
     'devices:list',
-    handled('devices:list', () => watcher.current()),
+    guarded('devices:list', () => watcher.current()),
   )
 
   ipcMain.handle(
     'devices:refresh',
-    handled('devices:refresh', () => watcher.refresh()),
+    guarded('devices:refresh', () => watcher.refresh()),
   )
 
   /* Polling only runs while a screen is actually showing devices. */
   ipcMain.handle(
     'devices:subscribe',
-    handled('devices:subscribe', () => {
+    guarded('devices:subscribe', () => {
       watcher.acquire()
       return true
     }),
@@ -108,7 +109,7 @@ function registerDeviceHandlers() {
 
   ipcMain.handle(
     'devices:unsubscribe',
-    handled('devices:unsubscribe', () => {
+    guarded('devices:unsubscribe', () => {
       watcher.release()
       return true
     }),
@@ -119,25 +120,66 @@ function registerDeviceHandlers() {
    the index fills in behind the UI, and every file it finishes is saved as
    it goes. A partial index is still a useful one. */
 function indexMetadataInBackground() {
+  if (!isUnlocked()) return
+
   const { libraryPath } = readSettings()
   if (!libraryPath) return
 
   indexLibrary(libraryPath).catch((error) => logError('metadata index', error))
 }
 
+/* A locked window must not be able to drive the library, or the lock
+   screen would be a picture of a lock rather than one. */
+function guarded(channel, fn) {
+  return handled(channel, async (...args) => {
+    if (!isUnlocked()) throw new Error('PhotoBase está bloqueado.')
+    return fn(...args)
+  })
+}
+
+function registerAuthHandlers() {
+  ipcMain.handle(
+    'auth:unlock',
+    handled('auth:unlock', (_event, password) => unlock(password)),
+  )
+
+  ipcMain.handle(
+    'auth:set',
+    guarded('auth:set', (_event, next, current) => setPassword(next, current)),
+  )
+
+  ipcMain.handle(
+    'auth:clear',
+    guarded('auth:clear', (_event, current) => clearPassword(current)),
+  )
+
+  ipcMain.handle(
+    'auth:lock',
+    handled('auth:lock', () => lock()),
+  )
+}
+
 function registerSettingsHandlers() {
+  /* The only handler that answers while locked, because the renderer has
+     to know there is a lock before it can show one. The stored hash never
+     crosses the bridge. */
   ipcMain.handle(
     'settings:get',
-    handled('settings:get', () => ({
-      ...readSettings(),
-      configured: isConfigured(),
-      suggestedPath: suggestedLibraryPath(),
-    })),
+    handled('settings:get', () => {
+      const { passwordHash, ...rest } = readSettings()
+      return {
+        ...rest,
+        configured: isConfigured(),
+        suggestedPath: suggestedLibraryPath(),
+        hasPassword: Boolean(passwordHash),
+        unlocked: isUnlocked(),
+      }
+    }),
   )
 
   ipcMain.handle(
     'settings:save',
-    handled('settings:save', (_event, patch) => {
+    guarded('settings:save', (_event, patch) => {
       /* Only ever accept the two fields this app owns, and validate the
          quota here rather than trusting whatever the renderer sent. */
       const next = {}
@@ -161,7 +203,7 @@ function registerSettingsHandlers() {
 
   ipcMain.handle(
     'settings:pickFolder',
-    handled('settings:pickFolder', async (event) => {
+    guarded('settings:pickFolder', async (event) => {
       /* The native folder dialog is a shell COM client, and so is the
          device probe. Running both at once can hang the main process, so
          the probe stands down for as long as the dialog is up. */
@@ -176,7 +218,7 @@ function registerSettingsHandlers() {
 
   ipcMain.handle(
     'backup:start',
-    handled('backup:start', async (event, deviceName) => {
+    guarded('backup:start', async (event, deviceName) => {
       const { libraryPath, quotaGB } = readSettings()
       if (!libraryPath || !quotaGB) {
         throw new Error('Configura primero la carpeta y el límite de la biblioteca.')
@@ -222,7 +264,7 @@ function registerSettingsHandlers() {
 
   ipcMain.handle(
     'library:photos',
-    handled('library:photos', async () => {
+    guarded('library:photos', async () => {
       const { libraryPath } = readSettings()
       const { groups, total } = await scanLibrary(libraryPath)
       const meta = readMeta(libraryPath)
@@ -246,7 +288,7 @@ function registerSettingsHandlers() {
 
   ipcMain.handle(
     'library:facets',
-    handled('library:facets', async () => {
+    guarded('library:facets', async () => {
       const { libraryPath } = readSettings()
       const { groups, total } = await scanLibrary(libraryPath)
       return { ...buildFacets(groups), total }
@@ -255,7 +297,7 @@ function registerSettingsHandlers() {
 
   ipcMain.handle(
     'library:toggleFavorite',
-    handled('library:toggleFavorite', (_event, path) => {
+    guarded('library:toggleFavorite', (_event, path) => {
       const { libraryPath } = readSettings()
       return toggleFavorite(libraryPath, path)
     }),
@@ -263,7 +305,7 @@ function registerSettingsHandlers() {
 
   ipcMain.handle(
     'library:delete',
-    handled('library:delete', (_event, path) => {
+    guarded('library:delete', (_event, path) => {
       const { libraryPath } = readSettings()
       return moveToTrash(libraryPath, path)
     }),
@@ -271,29 +313,29 @@ function registerSettingsHandlers() {
 
   ipcMain.handle(
     'library:trash',
-    handled('library:trash', () => trashWithCountdown(readSettings().libraryPath)),
+    guarded('library:trash', () => trashWithCountdown(readSettings().libraryPath)),
   )
 
   ipcMain.handle(
     'library:restore',
-    handled('library:restore', (_event, stored) =>
+    guarded('library:restore', (_event, stored) =>
       restoreFromTrash(readSettings().libraryPath, stored),
     ),
   )
 
   ipcMain.handle(
     'library:emptyTrash',
-    handled('library:emptyTrash', () => emptyTrash(readSettings().libraryPath)),
+    guarded('library:emptyTrash', () => emptyTrash(readSettings().libraryPath)),
   )
 
   ipcMain.handle(
     'library:backups',
-    handled('library:backups', () => readMeta(readSettings().libraryPath).backups),
+    guarded('library:backups', () => readMeta(readSettings().libraryPath).backups),
   )
 
   ipcMain.handle(
     'library:metadata',
-    handled('library:metadata', (_event, path, kind) => {
+    guarded('library:metadata', (_event, path, kind) => {
       const { libraryPath } = readSettings()
       return metadataFor(libraryPath, path, kind)
     }),
@@ -301,7 +343,7 @@ function registerSettingsHandlers() {
 
   ipcMain.handle(
     'library:breakdown',
-    handled('library:breakdown', async () => {
+    guarded('library:breakdown', async () => {
       const { libraryPath, quotaGB } = readSettings()
       const { usedBytes, entries } = await libraryBreakdown(libraryPath)
       return { usedBytes, entries, quotaGB }
@@ -312,17 +354,17 @@ function registerSettingsHandlers() {
      the user back to first-run setup afterwards. */
   ipcMain.handle(
     'settings:reset',
-    handled('settings:reset', () => resetConfiguration()),
+    guarded('settings:reset', () => resetConfiguration()),
   )
 
   ipcMain.handle(
     'settings:wipe',
-    handled('settings:wipe', () => wipeLibrary()),
+    guarded('settings:wipe', () => wipeLibrary()),
   )
 
   ipcMain.handle(
     'library:usage',
-    handled('library:usage', async () => {
+    guarded('library:usage', async () => {
       const { libraryPath, quotaGB } = readSettings()
       const { usedGB } = await libraryUsage(libraryPath)
       return { usedGB, quotaGB }
@@ -344,6 +386,7 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  registerAuthHandlers()
   registerSettingsHandlers()
   registerDeviceHandlers()
   createWindow()

@@ -3,6 +3,7 @@ import { join, resolve, sep } from 'path'
 import { pathToFileURL } from 'url'
 import { readSettings } from '../settings'
 import { logError } from '../log'
+import { isUnlocked } from '../auth'
 import { thumbnailFor } from './thumbnails'
 
 export const MEDIA_SCHEME = 'photobase'
@@ -25,6 +26,11 @@ export function registerMediaScheme() {
 export function handleMediaRequests() {
   protocol.handle(MEDIA_SCHEME, async (request) => {
     try {
+      /* The lock has to hold here too: this scheme is a second door into
+         the same folder, and a locked window could otherwise still ask it
+         for every photo by path. */
+      if (!isUnlocked()) return new Response('Locked', { status: 403 })
+
       const { libraryPath } = readSettings()
       if (!libraryPath) return new Response('No library', { status: 404 })
 
