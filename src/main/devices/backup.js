@@ -132,8 +132,16 @@ const COPY_SCRIPT = `
 param([string]$DeviceName, [string]$PlanPath)
 $ErrorActionPreference = 'SilentlyContinue'
 
-# 60 s without the file growing, at 500 ms a poll.
-$STALL_LIMIT = 120
+# A copy is given up on after this long without the file growing. Time,
+# not iterations, because the poll interval is no longer fixed.
+$STALL_MS = 60000
+
+# A messaging image lands in milliseconds, so waiting half a second for
+# every file turned five thousand small copies into forty minutes of
+# sleeping. Start impatient and back off: a long video reaches the slow,
+# cheap interval within a couple of seconds anyway.
+$POLL_MIN_MS = 25
+$POLL_MAX_MS = 500
 
 $plan = Get-Content -Raw -LiteralPath $PlanPath | ConvertFrom-Json
 $shell = New-Object -ComObject Shell.Application
@@ -171,23 +179,26 @@ function Test-Copied($path, $expected) {
 # pipeline where it would be read as an event.
 function Wait-Copy($path, $expected, $name) {
   $seen = -1
-  $idle = 0
-  $tick = 0
+  $delay = $POLL_MIN_MS
+  $idleMs = 0
+  $sinceReport = 0
 
-  while ($idle -lt $STALL_LIMIT) {
+  while ($idleMs -lt $STALL_MS) {
     if ($expected -gt 0 -and (Test-Copied $path $expected)) { return }
 
     $size = Get-Size $path
-    if ($size -gt $seen) { $seen = $size; $idle = 0 } else { $idle++ }
+    if ($size -gt $seen) { $seen = $size; $idleMs = 0 } else { $idleMs += $delay }
 
     # One long video would otherwise leave the bar frozen for minutes,
     # so the bytes already on disk are reported every few seconds.
-    $tick++
-    if (($tick % 8) -eq 0 -and $size -gt 0) {
+    $sinceReport += $delay
+    if ($sinceReport -ge 4000 -and $size -gt 0) {
       Write-Output ('{"type":"progress","name":' + ($name | ConvertTo-Json) + ',"bytes":' + $size + '}')
+      $sinceReport = 0
     }
 
-    Start-Sleep -Milliseconds 500
+    Start-Sleep -Milliseconds $delay
+    if ($delay -lt $POLL_MAX_MS) { $delay = [Math]::Min($POLL_MAX_MS, $delay * 2) }
   }
 }
 
@@ -204,7 +215,15 @@ foreach ($entry in $plan) {
   $sourceFolder = $folderCache[$entry.source]
   if ($null -eq $sourceFolder) { continue }
 
-  $item = @($sourceFolder.Items() | Where-Object { $_.Name -eq $entry.name })[0]
+  # ParseName asks the folder for one name. Filtering Items() instead
+  # walked the whole folder over MTP for every single file, which on a
+  # folder of three thousand images is nine million COM lookups to copy
+  # it. The enumeration stays as a fallback for any provider whose
+  # ParseName comes back empty.
+  $item = $sourceFolder.ParseName($entry.name)
+  if ($null -eq $item) {
+    $item = @($sourceFolder.Items() | Where-Object { $_.Name -eq $entry.name })[0]
+  }
   if ($null -eq $item) { continue }
 
   if (-not (Test-Path -LiteralPath $entry.destDir)) {
