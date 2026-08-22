@@ -105,10 +105,7 @@ export async function libraryBreakdown(libraryPath) {
   return { usedBytes, entries }
 }
 
-/* Copying must stop at the cap rather than overrun it, so callers ask
-   before writing rather than apologising afterwards. */
-export function quotaState({ usedGB, quotaGB, warnAt = 0.9 }) {
-  if (!quotaGB) return { ratio: 0, warning: false, full: false }
-  const ratio = usedGB / quotaGB
-  return { ratio, warning: ratio >= warnAt && ratio < 1, full: ratio >= 1 }
-}
+/* Moved to ../domain/library/quota-policy.ts — pure arithmetic, no
+   filesystem access, re-exported here so nothing importing quotaState
+   from this module has to change. */
+export { quotaState } from '../domain/library/quota-policy'

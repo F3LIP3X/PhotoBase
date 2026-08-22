@@ -1,6 +1,7 @@
 import { readdir, stat } from 'fs/promises'
 import { join } from 'path'
 import { isMediaFile, isVideoFile } from '../devices/androidLayout'
+import { categoryOf } from '../domain/media/category'
 
 /* The library is laid out as YYYY/MM/file, which means the folder tree
    itself carries the dates — no database needed to group by month. */
@@ -37,17 +38,8 @@ function timeFromName(name, year, month) {
   return new Date(`${year}-${month}-01T00:00:00`).getTime()
 }
 
-/* Android names its files by where they came from: PXL_ from the camera,
-   Screenshot_ from the screen — the closest thing to a kind without
-   opening every file. Video wins over origin, because a camera clip is a
-   video first and a PXL_ capture second. Decided here so the grid, the
-   facets and the filters cannot disagree about it. */
-function categoryOf(name, kind) {
-  if (kind === 'video') return 'Vídeos'
-  if (/^Screenshot/i.test(name)) return 'Capturas'
-  if (/^PXL_/i.test(name)) return 'Cámara'
-  return 'Otras'
-}
+/* categoryOf moved to ../domain/media/category.ts — pure classification,
+   no filesystem access. */
 
 export async function scanLibrary(libraryPath) {
   if (!libraryPath) return { groups: [], total: 0 }

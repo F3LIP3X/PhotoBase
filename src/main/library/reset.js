@@ -1,10 +1,11 @@
 import { app } from 'electron'
 import { rmSync } from 'fs'
-import { join, resolve, parse } from 'path'
+import { join, resolve } from 'path'
 import { readSettings, clearSettings } from '../settings'
 import { clearIndex } from './index-store'
 import { readMeta, writeMeta } from './meta'
 import { log } from '../infrastructure/logging/file-logger'
+import { OWNED_BY_SYSTEM, isDriveRoot } from '../domain/settings/protected-paths'
 
 /* Two levels, deliberately far apart.
  *
@@ -38,26 +39,14 @@ export function resetConfiguration() {
   return true
 }
 
-/* Folders the system owns. Depth is not the test — D:\PhotoBase is one
-   segment deep and perfectly reasonable, while /home is one segment deep
-   and must never be handed to a recursive delete. */
-const OWNED_BY_SYSTEM = [
-  'home',
-  'appData',
-  'userData',
-  'documents',
-  'downloads',
-  'desktop',
-  'music',
-  'pictures',
-  'videos',
-]
+/* OWNED_BY_SYSTEM and the drive-root check now live in
+   ../domain/settings/protected-paths.ts — pure, no Electron dependency. */
 
 /* The library folder is whatever the user picked in a native dialog, so
    it could be a drive root or their home directory — where a recursive
    delete takes far more than a photo library. */
 function assertSafeToWipe(target) {
-  if (target === parse(target).root) {
+  if (isDriveRoot(target)) {
     throw new Error(
       `«${target}» es la raíz de una unidad, no una carpeta de biblioteca. ` +
         'PhotoBase no va a borrar eso.',
