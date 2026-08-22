@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PiFolderOpenFill, PiArrowRightBold } from 'react-icons/pi';
-import Mark from '../Components/Mark';
+import Mark from '../../../components/ui/Mark';
 import { useSettings } from '../hooks/useSettings';
 
 /* First run: the two things PhotoBase cannot guess. The folder is

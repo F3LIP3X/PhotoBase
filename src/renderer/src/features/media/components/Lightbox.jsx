@@ -12,7 +12,7 @@ import {
   PiArrowSquareOutBold,
 } from 'react-icons/pi';
 import { mediaUrl } from '../hooks/useLibrary';
-import { formatDate, formatSize } from '../format';
+import { formatDate, formatSize } from '../../../shared/format';
 import MetadataPanel from './MetadataPanel';
 
 /* Photos open here rather than in the Windows viewer: the library is the

@@ -8,11 +8,11 @@ import {
   PiCaretDownBold,
   PiClockCounterClockwiseBold,
 } from 'react-icons/pi';
-import EmptyState from '../Components/EmptyState';
-import { useShell } from '../hooks/useShell';
+import EmptyState from '../../media/components/EmptyState';
+import { useShell } from '../../../app/hooks/useShell';
 import { useDevices } from '../hooks/useDevices';
 import { useBackup } from '../hooks/useBackup';
-import { BackupProgress, ActivityLog } from '../Components/BackupProgress';
+import { BackupProgress, ActivityLog } from '../components/BackupProgress';
 
 /* This screen backs a device up: it COPIES media onto this machine and
    never moves or deletes anything on the phone. Any future transfer

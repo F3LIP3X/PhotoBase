@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PiTrashFill, PiArrowCounterClockwiseBold } from 'react-icons/pi';
-import EmptyState from '../Components/EmptyState';
-import { useShell } from '../hooks/useShell';
+import EmptyState from '../components/EmptyState';
+import { useShell } from '../../../app/hooks/useShell';
 
 /* Nothing is purged silently: every item shows the days it has left, and
    emptying is the only thing that frees the space — so it is never

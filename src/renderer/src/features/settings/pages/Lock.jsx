@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PiLockKeyFill, PiArrowRightBold } from 'react-icons/pi';
-import Mark from '../Components/Mark';
-import ThemeToggle from '../Components/ThemeToggle';
+import Mark from '../../../components/ui/Mark';
+import ThemeToggle from '../../../components/ui/ThemeToggle';
 import { useSettings } from '../hooks/useSettings';
 
 /* The lock screen is the whole app until it is passed: main refuses every
