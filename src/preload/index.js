@@ -47,6 +47,7 @@ const api = {
     restore: (stored) => call('library:restore', stored),
     emptyTrash: () => call('library:emptyTrash'),
     backups: () => call('library:backups'),
+    open: (path) => call('library:open', path),
 
     /* Photos are served through a scheme that only reaches inside the
        library, so the renderer never handles filesystem paths. */

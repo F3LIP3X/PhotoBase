@@ -8,6 +8,8 @@ import {
   PiStar,
   PiTrashBold,
   PiInfoBold,
+  PiFilmSlateBold,
+  PiArrowSquareOutBold,
 } from 'react-icons/pi';
 import { mediaUrl } from '../hooks/useLibrary';
 import { formatDate, formatSize } from '../format';
@@ -19,6 +21,7 @@ import MetadataPanel from './MetadataPanel';
 const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, onDelete }) => {
   const photo = photos[index];
   const [info, setInfo] = useState(false);
+  const [unplayable, setUnplayable] = useState(false);
 
   const step = useCallback(
     (delta) => {
@@ -27,6 +30,10 @@ const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, 
     },
     [index, photos.length, onMove],
   );
+
+  useEffect(() => {
+    setUnplayable(false);
+  }, [photo?.path]);
 
   useEffect(() => {
     const onKey = (event) => {
@@ -114,12 +121,18 @@ const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, 
         }`}
       >
         {photo.kind === 'video' ? (
-          <video
-            key={photo.path}
-            src={mediaUrl(photo.path)}
-            controls
-            className="max-h-full max-w-full rounded-md shadow-lg"
-          />
+          unplayable ? (
+            <UnplayableVideo photo={photo} />
+          ) : (
+            <video
+              key={photo.path}
+              src={mediaUrl(photo.path)}
+              controls
+              autoPlay
+              onError={() => setUnplayable(true)}
+              className="max-h-full max-w-full rounded-md shadow-lg"
+            />
+          )
         ) : (
           <img
             key={photo.path}
@@ -151,6 +164,47 @@ const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, 
       {info && <MetadataPanel photo={photo} onClose={() => setInfo(false)} />}
     </div>,
     document.body,
+  );
+};
+
+/* A codec Chromium will not decode is not a broken file, and saying so
+   matters: phones record in HEVC by default and Chromium ships without
+   the licence for it. The file plays fine in the system player. */
+const UnplayableVideo = ({ photo }) => {
+  const [failed, setFailed] = useState(null);
+
+  const open = async () => {
+    try {
+      await globalThis.api?.library?.open(photo.path);
+    } catch (cause) {
+      setFailed(cause?.message ?? 'No se pudo abrir el archivo.');
+    }
+  };
+
+  return (
+    <div className="glass-media max-w-md rounded-lg px-7 py-7 text-center">
+      <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--glass-bg-strong)]">
+        <PiFilmSlateBold className="text-[20px] text-ink-2" />
+      </span>
+
+      <h2 className="mt-4 text-[16px] text-ink">Este vídeo no se reproduce aquí</h2>
+
+      <p className="mt-3 text-[13px] leading-relaxed text-ink-2">
+        El archivo está intacto: lo que falta es el códec. Los móviles graban en HEVC
+        (H.265) por defecto y Chromium, sobre el que corre PhotoBase, no lo incluye.
+      </p>
+
+      <button
+        type="button"
+        onClick={open}
+        className="mt-5 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-[13px] font-semibold text-accent-ink transition-opacity duration-200 hover:opacity-90"
+      >
+        Abrir con el reproductor del sistema
+        <PiArrowSquareOutBold />
+      </button>
+
+      {failed && <p className="mt-3 text-[12.5px] text-accent-2">{failed}</p>}
+    </div>
   );
 };
 

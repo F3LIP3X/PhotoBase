@@ -1,5 +1,5 @@
 import { app, shell, dialog, BrowserWindow, ipcMain, Notification } from 'electron'
-import { join } from 'path'
+import { join, resolve, sep } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createDeviceWatcher } from './devices/watcher'
@@ -367,6 +367,27 @@ function registerSettingsHandlers() {
       const { libraryPath } = readSettings()
       const { groups, total } = await scanLibrary(libraryPath)
       return { ...buildFacets(groups), total }
+    }),
+  )
+
+  /* Codecs the app cannot decode are still perfectly good files, so the
+     viewer can hand one to whatever the system uses instead. Confined to
+     the library, like every other path this app accepts. */
+  ipcMain.handle(
+    'library:open',
+    guarded('library:open', async (_event, path) => {
+      const { libraryPath } = readSettings()
+      if (!libraryPath || !path) return false
+
+      const root = resolve(libraryPath)
+      const target = resolve(join(root, path))
+      if (target !== root && !target.startsWith(root + sep)) {
+        throw new Error('Ese archivo no está en tu biblioteca.')
+      }
+
+      const failure = await shell.openPath(target)
+      if (failure) throw new Error(failure)
+      return true
     }),
   )
 
