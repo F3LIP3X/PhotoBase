@@ -12,9 +12,11 @@ import {
   suggestedLibraryPath,
 } from './settings'
 import { libraryUsage } from './library/usage'
+import { runBackup } from './devices/backup'
 import { log, logError, installCrashHandlers, handled } from './log'
 
 const DEVICES_CHANNEL = 'devices:changed'
+const BACKUP_CHANNEL = 'backup:progress'
 
 let watcher = null
 
@@ -143,6 +145,36 @@ function registerSettingsHandlers() {
       watcher?.pause()
       try {
         return await pickLibraryFolder(BrowserWindow.fromWebContents(event.sender))
+      } finally {
+        watcher?.resume()
+      }
+    }),
+  )
+
+  ipcMain.handle(
+    'backup:start',
+    handled('backup:start', async (event, deviceName) => {
+      const { libraryPath, quotaGB } = readSettings()
+      if (!libraryPath || !quotaGB) {
+        throw new Error('Configura primero la carpeta y el límite de la biblioteca.')
+      }
+
+      const { usedGB } = await libraryUsage(libraryPath)
+      const sender = event.sender
+
+      /* The device probe and the copy both drive the Windows shell;
+         running them together is what froze the app before. */
+      watcher?.pause()
+      try {
+        return await runBackup({
+          deviceName,
+          libraryPath,
+          quotaGB,
+          usedGB,
+          onProgress(progress) {
+            if (!sender.isDestroyed()) sender.send(BACKUP_CHANNEL, progress)
+          },
+        })
       } finally {
         watcher?.resume()
       }

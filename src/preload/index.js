@@ -28,6 +28,16 @@ const api = {
     usage: () => call('library:usage'),
   },
 
+  backup: {
+    start: (deviceName) => call('backup:start', deviceName),
+
+    onProgress(callback) {
+      const handler = (_event, progress) => callback(progress)
+      ipcRenderer.on('backup:progress', handler)
+      return () => ipcRenderer.removeListener('backup:progress', handler)
+    },
+  },
+
   devices: {
     list: () => call('devices:list'),
     refresh: () => call('devices:refresh'),
