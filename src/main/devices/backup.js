@@ -6,6 +6,7 @@ import { app } from 'electron'
 import {
   DEFAULT_SOURCES,
   EXCLUDED_PATHS,
+  MEDIA_EXTENSIONS,
   isExcludedPath,
   isMediaFile,
 } from './androidLayout'
@@ -25,10 +26,17 @@ const GB = 1024 ** 3
    latter returns localised text ("3,45 MB") that cannot be parsed back
    into a number. */
 const SCAN_SCRIPT = `
-param([string]$DeviceName, [string]$Sources, [string]$Excluded)
+param([string]$DeviceName, [string]$Sources, [string]$Excluded, [string]$Extensions)
 $ErrorActionPreference = 'SilentlyContinue'
 
 $skip = @($Excluded -split ',' | Where-Object { $_ })
+
+# ExtendedProperty is a round trip to the phone, and a full storage walk
+# meets far more APKs, documents and audio than photographs. The name is
+# free to look at, so anything that is not media is rejected before we
+# pay to ask how big it is. PowerShell hashtable keys ignore case.
+$exts = @{}
+foreach ($e in ($Extensions -split ',')) { if ($e) { $exts[$e] = $true } }
 
 # The walk now starts at the storage root, so it needs room for the
 # deeper places apps keep media —
@@ -78,9 +86,14 @@ function Walk($folder, $path, $found, $depth) {
       continue
     }
 
+    $name = $item.Name
+    $dot = $name.LastIndexOf('.')
+    if ($dot -lt 1) { continue }
+    if (-not $exts.ContainsKey($name.Substring($dot + 1))) { continue }
+
     [void]$found.Add([pscustomobject]@{
       source   = $path
-      name     = $item.Name
+      name     = $name
       size     = [int64]$item.ExtendedProperty('Size')
       modified = $item.ExtendedProperty('System.DateModified')
     })
@@ -308,6 +321,8 @@ export async function planBackup({ deviceName, libraryPath, quotaGB, onProgress 
       DEFAULT_SOURCES.join(','),
       '-Excluded',
       EXCLUDED_PATHS.join(','),
+      '-Extensions',
+      MEDIA_EXTENSIONS.join(','),
     ],
     {
       onLine(line) {

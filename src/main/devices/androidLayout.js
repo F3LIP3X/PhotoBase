@@ -45,7 +45,11 @@ const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'dng', '
    holes the user cannot see until the phone is gone. */
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'm4v', '3gp', 'mkv', 'webm']
 
-const MEDIA = new Set([...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS])
+/* Exported so the device scan can reject a file by name before paying
+   for a round trip to ask MTP how big it is. */
+export const MEDIA_EXTENSIONS = [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS]
+
+const MEDIA = new Set(MEDIA_EXTENSIONS)
 const VIDEO = new Set(VIDEO_EXTENSIONS)
 
 export function extensionOf(name) {
