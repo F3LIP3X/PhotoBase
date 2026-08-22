@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   PiXBold,
@@ -7,15 +7,18 @@ import {
   PiStarFill,
   PiStar,
   PiTrashBold,
+  PiInfoBold,
 } from 'react-icons/pi';
 import { mediaUrl } from '../hooks/useLibrary';
 import { formatDate, formatSize } from '../format';
+import MetadataPanel from './MetadataPanel';
 
 /* Photos open here rather than in the Windows viewer: the library is the
    app's, and handing the file to another program loses the favourite and
    delete actions that belong beside it. */
 const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, onDelete }) => {
   const photo = photos[index];
+  const [info, setInfo] = useState(false);
 
   const step = useCallback(
     (delta) => {
@@ -73,6 +76,16 @@ const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, 
         <div className="flex shrink-0 items-center gap-0.5 rounded-full bg-[rgba(0,0,0,0.22)] p-1">
           <button
             type="button"
+            onClick={() => setInfo((open) => !open)}
+            aria-label="Ver metadatos"
+            aria-pressed={info}
+            className={`control h-9 w-9 ${info ? 'bg-[var(--glass-bg-strong)] text-ink' : ''}`}
+          >
+            <PiInfoBold />
+          </button>
+
+          <button
+            type="button"
             onClick={() => onToggleFavorite(photo.path)}
             aria-label={favorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
             className="control h-9 w-9"
@@ -95,7 +108,11 @@ const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, 
         </div>
       </header>
 
-      <div className="absolute inset-0 flex items-center justify-center px-24 pb-8 pt-28">
+      <div
+        className={`absolute inset-0 flex items-center justify-center pb-8 pt-28 transition-[padding] duration-500 ease-glass ${
+          info ? 'pl-24 pr-[376px]' : 'px-24'
+        }`}
+      >
         {photo.kind === 'video' ? (
           <video
             key={photo.path}
@@ -126,10 +143,12 @@ const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, 
         onClick={() => step(1)}
         disabled={index === photos.length - 1}
         label="Siguiente"
-        className="right-5"
+        className={info ? 'right-[376px]' : 'right-5'}
       >
         <PiCaretRightBold />
       </StepButton>
+
+      {info && <MetadataPanel photo={photo} onClose={() => setInfo(false)} />}
     </div>,
     document.body,
   );
