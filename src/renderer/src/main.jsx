@@ -6,6 +6,7 @@ import './Styles/index.css';
 import Shell from './Components/Shell';
 import Welcome from './Welcome';
 import Setup from './Pages/Setup';
+import Lock from './Pages/Lock';
 import Photos from './Pages/Photos';
 import Explore from './Pages/Explore';
 import Favorites from './Pages/Favorites';
@@ -18,6 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <Router>
       <Routes>
         <Route path="/" element={<Welcome />} />
+        <Route path="/bloqueo" element={<Lock />} />
         <Route path="/configurar" element={<Setup />} />
 
         <Route element={<Shell />}>

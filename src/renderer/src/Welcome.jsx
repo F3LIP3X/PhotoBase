@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PiShieldCheckFill, PiArrowRightBold } from 'react-icons/pi';
 import Mark from './Components/Mark';
@@ -7,6 +8,14 @@ import { useSettings } from './hooks/useSettings';
 function Welcome() {
   const navigate = useNavigate();
   const { settings } = useSettings();
+
+  /* A locked library never shows its front door: the welcome screen hands
+     straight over to the lock. */
+  useEffect(() => {
+    if (settings?.hasPassword && !settings.unlocked) {
+      navigate('/bloqueo', { replace: true });
+    }
+  }, [settings, navigate]);
 
   /* First run goes through setup; afterwards the button opens the
      library directly. */
