@@ -14,6 +14,20 @@ const ContactSheet = ({ groups, library }) => {
 
   const openAt = (photo) => setOpen(flat.findIndex((item) => item.path === photo.path));
 
+  /* Deleting keeps the viewer open and lands on the next photo, so a run
+     of bad shots can be cleared without reopening each time. Removing an
+     item shifts the list up, so the same index already points at the next
+     one; only the last photo has to step back. */
+  const deleteAndAdvance = async (path) => {
+    const wasOnly = flat.length === 1;
+    const wasLast = open === flat.length - 1;
+
+    await library.remove(path);
+
+    if (wasOnly) setOpen(null);
+    else if (wasLast) setOpen(open - 1);
+  };
+
   return (
     <>
       {groups.map((group) => (
@@ -56,7 +70,7 @@ const ContactSheet = ({ groups, library }) => {
         </section>
       ))}
 
-      {open !== null && (
+      {open !== null && flat[open] && (
         <Lightbox
           photos={flat}
           index={open}
@@ -64,10 +78,7 @@ const ContactSheet = ({ groups, library }) => {
           onMove={setOpen}
           onClose={() => setOpen(null)}
           onToggleFavorite={library.toggleFavorite}
-          onDelete={async (path) => {
-            setOpen(null);
-            await library.remove(path);
-          }}
+          onDelete={deleteAndAdvance}
         />
       )}
     </>
