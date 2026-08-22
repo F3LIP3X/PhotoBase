@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   PiUsbFill,
   PiDeviceMobileFill,
   PiHardDriveFill,
   PiWarningFill,
   PiArrowsClockwiseBold,
+  PiCaretDownBold,
+  PiClockCounterClockwiseBold,
 } from 'react-icons/pi';
 import EmptyState from '../Components/EmptyState';
 import { useShell } from '../hooks/useShell';
@@ -67,11 +69,74 @@ const Devices = () => {
 
       <BackupStatus backup={backup} />
 
+      <BackupHistory refreshKey={backup.result} />
+
       <p className="mt-4 text-[13px] leading-relaxed text-ink-3">
         PhotoBase copia las fotos a este equipo. Nunca se borra ni se mueve nada
         del dispositivo: lo que hay en tu móvil se queda donde está.
       </p>
     </div>
+  );
+};
+
+const BackupHistory = ({ refreshKey }) => {
+  const [entries, setEntries] = useState(null);
+  const [open, setOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    const api = globalThis.api?.library;
+    if (!api) return;
+    setEntries(await api.backups());
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load, refreshKey]);
+
+  if (!entries?.length) return null;
+
+  return (
+    <section className="mt-4">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center gap-2 rounded-md px-1 py-2 text-left transition-colors duration-200 hover:text-ink"
+        aria-expanded={open}
+      >
+        <PiClockCounterClockwiseBold className="text-ink-3" />
+        <span className="eyebrow text-ink-3">Historial de copias ({entries.length})</span>
+        <span className="h-px flex-1 bg-[var(--glass-brd)]" />
+        <PiCaretDownBold
+          className={`text-ink-3 transition-transform duration-200 ease-glass ${
+            open ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {open && (
+        <ul className="mt-2 flex flex-col gap-1.5">
+          {entries.map((entry) => (
+            <li
+              key={entry.at}
+              className="glass flex items-center gap-3 rounded-sm px-4 py-2.5 text-[13px]"
+            >
+              <span className="eyebrow shrink-0 text-ink-3">
+                {new Date(entry.at).toLocaleString('es-ES', {
+                  day: '2-digit',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-ink-2">{entry.deviceName}</span>
+              <span className="shrink-0 text-ink-2">
+                {entry.copied > 0 ? `+${entry.copied} nuevas` : 'sin novedades'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 };
 
