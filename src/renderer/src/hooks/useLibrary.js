@@ -50,6 +50,17 @@ export function useLibrary() {
     [reload],
   );
 
+  const removeMany = useCallback(
+    async (paths) => {
+      const api = bridge();
+      if (!api || !paths.length) return 0;
+      const moved = await api.removeMany(paths);
+      await reload();
+      return moved;
+    },
+    [reload],
+  );
+
   return {
     groups,
     total,
@@ -58,6 +69,7 @@ export function useLibrary() {
     isFavorite,
     toggleFavorite,
     remove,
+    removeMany,
     reload,
     supported: Boolean(bridge()),
   };

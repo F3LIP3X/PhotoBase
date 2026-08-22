@@ -20,6 +20,7 @@ import {
   readMeta,
   toggleFavorite,
   moveToTrash,
+  moveManyToTrash,
   restoreFromTrash,
   emptyTrash,
   trashWithCountdown,
@@ -404,6 +405,14 @@ function registerSettingsHandlers() {
     guarded('library:delete', (_event, path) => {
       const { libraryPath } = readSettings()
       return moveToTrash(libraryPath, path)
+    }),
+  )
+
+  ipcMain.handle(
+    'library:deleteMany',
+    guarded('library:deleteMany', (_event, paths) => {
+      const { libraryPath } = readSettings()
+      return moveManyToTrash(libraryPath, paths)
     }),
   )
 

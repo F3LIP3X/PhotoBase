@@ -62,6 +62,45 @@ export function moveToTrash(libraryPath, path) {
   return true
 }
 
+/* Bulk delete, written once rather than once per photo: two hundred
+   single deletions meant two hundred reads and writes of the metadata
+   file and two hundred rescans of the library. */
+export function moveManyToTrash(libraryPath, paths) {
+  const wanted = [...new Set(paths ?? [])].filter(Boolean)
+  if (!wanted.length) return 0
+
+  const meta = readMeta(libraryPath)
+  const now = Date.now()
+  let moved = 0
+
+  for (const path of wanted) {
+    const source = join(libraryPath, path)
+    if (!existsSync(source)) continue
+
+    /* The counter matters: two photos with the same name deleted inside
+       the same millisecond would otherwise claim the same trash slot,
+       and the second would overwrite the first. */
+    const trashName = `${now}-${moved}-${basename(path)}`
+    const target = join(libraryPath, TRASH_DIR, trashName)
+
+    try {
+      mkdirSync(dirname(target), { recursive: true })
+      renameSync(source, target)
+    } catch {
+      continue
+    }
+
+    meta.trash.push({ stored: trashName, originalPath: path, deletedAt: now })
+    moved += 1
+  }
+
+  const gone = new Set(wanted)
+  meta.favorites = meta.favorites.filter((favorite) => !gone.has(favorite))
+  writeMeta(libraryPath, meta)
+
+  return moved
+}
+
 export function restoreFromTrash(libraryPath, stored) {
   const meta = readMeta(libraryPath)
   const entry = meta.trash.find((item) => item.stored === stored)

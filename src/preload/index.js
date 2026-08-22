@@ -43,6 +43,7 @@ const api = {
     facets: () => call('library:facets'),
     toggleFavorite: (path) => call('library:toggleFavorite', path),
     remove: (path) => call('library:delete', path),
+    removeMany: (paths) => call('library:deleteMany', paths),
     trash: () => call('library:trash'),
     restore: (stored) => call('library:restore', stored),
     emptyTrash: () => call('library:emptyTrash'),
