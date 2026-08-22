@@ -1,12 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  PiStarFill,
-  PiPlayFill,
-  PiCheckBold,
-  PiTrashBold,
-  PiCaretLeftBold,
-  PiCaretRightBold,
-} from 'react-icons/pi';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { PiStarFill, PiPlayFill, PiCheckBold, PiTrashBold } from 'react-icons/pi';
 import Lightbox from './Lightbox';
 import { thumbUrl } from '../hooks/useLibrary';
 
@@ -39,45 +32,15 @@ const Tile = ({ photo }) => {
   );
 };
 
-/* Five thousand tiles is five thousand DOM nodes and five thousand
-   thumbnail requests, which is more than the grid can hold up. Lazy
-   loading spares the network but not the layout. */
-const PAGE_SIZE = 200;
+/* Rendering five thousand tiles at once is five thousand DOM nodes and
+   five thousand thumbnail requests up front, which is what made the grid
+   drag. A chunk at a time keeps the initial paint cheap; the sentinel
+   below grows it as the scroller actually reaches it. */
+const CHUNK_SIZE = 120;
 
-/* First, last, and a window around the current page. Anything else is a
-   dot: a library of five thousand photos is twenty-six pages, and
-   twenty-six buttons is not navigation. */
-function pageNumbers(current, pages) {
-  if (pages <= 7) return [...Array(pages).keys()];
-
-  const around = [current - 1, current, current + 1].filter((n) => n > 0 && n < pages - 1);
-  const shown = [...new Set([0, ...around, pages - 1])].sort((a, b) => a - b);
-
-  const out = [];
-  let previous = null;
-  for (const number of shown) {
-    if (previous !== null && number - previous > 1) out.push(null);
-    out.push(number);
-    previous = number;
-  }
-  return out;
-}
-
-const PageButton = ({ onClick, disabled, label, children }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    aria-label={label}
-    className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--glass-brd)] text-ink-2 transition-colors duration-200 hover:border-accent hover:text-ink disabled:pointer-events-none disabled:opacity-30"
-  >
-    {children}
-  </button>
-);
-
-const ContactSheet = ({ groups, library, pageSize = PAGE_SIZE }) => {
+const ContactSheet = ({ groups, library, chunkSize = CHUNK_SIZE }) => {
   const [open, setOpen] = useState(null);
-  const [page, setPage] = useState(0);
+  const [loaded, setLoaded] = useState(1);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState(() => new Set());
   /* Where the last plain click landed, so shift-click has something to
@@ -85,19 +48,26 @@ const ContactSheet = ({ groups, library, pageSize = PAGE_SIZE }) => {
   const [anchor, setAnchor] = useState(null);
   const [working, setWorking] = useState(false);
 
-  /* Paged over the flattened library rather than by month, so every page
-     is the same size — months range from two photos to four hundred. The
-     month headings are rebuilt from whatever the page happens to hold. */
+  /* Flattened rather than grouped, so a chunk boundary is a count of
+     photos regardless of how unevenly they fall across months — a month
+     can hold anywhere from two photos to four hundred. */
   const entries = useMemo(
     () => groups.flatMap((group) => group.photos.map((photo) => ({ photo, group }))),
     [groups],
   );
 
-  const pages = Math.max(1, Math.ceil(entries.length / pageSize));
-  const current = Math.min(page, pages - 1);
+  const visible = Math.min(loaded * chunkSize, entries.length);
+  const hasMore = visible < entries.length;
 
-  const paged = useMemo(() => {
-    const slice = entries.slice(current * pageSize, current * pageSize + pageSize);
+  /* A fresh search or a deletion can leave the window pointed past the
+     end of a now-shorter list; a full library needs it to grow back too,
+     rather than being stuck at whatever it happened to load before. */
+  useEffect(() => {
+    setLoaded(1);
+  }, [groups]);
+
+  const shown = useMemo(() => {
+    const slice = entries.slice(0, visible);
     const out = [];
 
     for (const { photo, group } of slice) {
@@ -107,29 +77,34 @@ const ContactSheet = ({ groups, library, pageSize = PAGE_SIZE }) => {
     }
 
     return out.map((group) => ({ ...group, count: group.photos.length }));
-  }, [entries, current, pageSize]);
+  }, [entries, visible]);
 
-  /* Deleting or searching can shrink the library under a page that no
-     longer exists. */
+  /* The sentinel is a bare div the scroller can see coming: once it
+     enters view the next chunk is already needed, not merely close. */
+  const sentinel = useRef(null);
+
   useEffect(() => {
-    if (page > pages - 1) setPage(0);
-  }, [page, pages]);
+    const target = sentinel.current;
+    if (!target || !hasMore) return undefined;
 
-  /* The viewer steps through the page on screen, not the whole library:
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setLoaded((current) => current + 1);
+      },
+      { root: document.querySelector('main'), rootMargin: '800px 0px' },
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore, entries.length]);
+
+  /* The viewer steps through what is on screen, not the whole library:
      the arrow keys should land where the eye can follow. */
-  const flat = useMemo(() => paged.flatMap((group) => group.photos), [paged]);
+  const flat = useMemo(() => shown.flatMap((group) => group.photos), [shown]);
   const positions = useMemo(
     () => new Map(flat.map((photo, at) => [photo.path, at])),
     [flat],
   );
-
-  const goTo = (next) => {
-    setPage(next);
-    leaveSelection();
-    /* The scroller belongs to the Shell, and landing halfway down a
-       fresh page reads as a glitch. */
-    document.querySelector('main')?.scrollTo({ top: 0 });
-  };
 
   const openAt = (photo) => setOpen(flat.findIndex((item) => item.path === photo.path));
 
@@ -202,14 +177,14 @@ const ContactSheet = ({ groups, library, pageSize = PAGE_SIZE }) => {
     <>
       {/* Fixed to the viewport rather than the scroller, so it stays put
           exactly where the hand expects it instead of drifting off with
-          the grid. Anchored clear of the rail (which ends at x≈92px), the
-          toolbar (full-width along the top) and the storage pill
-          (bottom-right), so nothing it can collide with. */}
+          the grid. Stacked directly above the storage pill, in the same
+          right-aligned column, rather than floating loose somewhere else
+          on screen. */}
       <button
         type="button"
         onClick={() => (selecting ? leaveSelection() : setSelecting(true))}
         aria-pressed={selecting}
-        className={`glass fixed bottom-6 left-[108px] z-30 flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-medium shadow-md transition-colors duration-200 ease-glass ${
+        className={`glass fixed bottom-20 right-4 z-30 flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-medium shadow-md transition-colors duration-200 ease-glass ${
           selecting ? 'text-accent' : 'text-ink-2 hover:text-ink'
         }`}
       >
@@ -217,7 +192,7 @@ const ContactSheet = ({ groups, library, pageSize = PAGE_SIZE }) => {
         {selecting ? 'Cancelar' : 'Seleccionar'}
       </button>
 
-      {paged.map((group) => (
+      {shown.map((group) => (
         <section key={group.id} className="mb-10 last:mb-0">
           <div className="mb-3 flex items-baseline gap-3">
             <h2 className="text-[15px] capitalize text-ink">{group.label}</h2>
@@ -273,50 +248,10 @@ const ContactSheet = ({ groups, library, pageSize = PAGE_SIZE }) => {
         </section>
       ))}
 
-      {pages > 1 && (
-        <nav
-          aria-label="Paginación"
-          className="mt-10 flex items-center justify-center gap-2"
-        >
-          <PageButton
-            onClick={() => goTo(current - 1)}
-            disabled={current === 0}
-            label="Página anterior"
-          >
-            <PiCaretLeftBold />
-          </PageButton>
-
-          {pageNumbers(current, pages).map((entry, at) =>
-            entry === null ? (
-              <span key={`hueco-${at}`} className="px-1 text-ink-3">
-                ·
-              </span>
-            ) : (
-              <button
-                key={entry}
-                type="button"
-                onClick={() => goTo(entry)}
-                aria-current={entry === current ? 'page' : undefined}
-                className={`h-9 min-w-9 rounded-full px-3 text-[13px] transition-colors duration-200 ${
-                  entry === current
-                    ? 'bg-accent font-semibold text-accent-ink'
-                    : 'border border-[var(--glass-brd)] text-ink-2 hover:border-accent hover:text-ink'
-                }`}
-              >
-                {entry + 1}
-              </button>
-            ),
-          )}
-
-          <PageButton
-            onClick={() => goTo(current + 1)}
-            disabled={current === pages - 1}
-            label="Página siguiente"
-          >
-            <PiCaretRightBold />
-          </PageButton>
-        </nav>
-      )}
+      {/* An empty tripwire rather than a button: crossing into view is
+         the trigger, so the next chunk is already loading by the time the
+         eye gets there. */}
+      {hasMore && <div ref={sentinel} aria-hidden="true" className="h-px" />}
 
       {selecting && selected.size > 0 && (
         <div className="glass fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-4 rounded-full py-2.5 pl-6 pr-2.5 shadow-lg">
@@ -328,7 +263,7 @@ const ContactSheet = ({ groups, library, pageSize = PAGE_SIZE }) => {
             onClick={() => setSelected(new Set(flat.map((photo) => photo.path)))}
             className="eyebrow text-ink-3 transition-colors duration-200 hover:text-ink"
           >
-            {pages > 1 ? 'Toda la página' : 'Todas'}
+            {hasMore || loaded > 1 ? 'Todas las cargadas' : 'Todas'}
           </button>
           <button
             type="button"
