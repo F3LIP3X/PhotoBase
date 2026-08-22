@@ -22,9 +22,9 @@ function cacheKey(fullPath) {
   return createHash('sha1').update(`${fullPath}|${stamp}`).digest('hex')
 }
 
-/* Videos have no still to resize without a decoder, so they keep using
-   the full file and the grid simply shows the first frame the browser
-   decodes. */
+/* A video has no still to resize without a decoder, so it never gets a
+   thumbnail at all: the grid draws its own tile for those rather than
+   asking for one. */
 const isResizable = (name) => /\.(jpe?g|png|webp|heic|heif|gif|bmp)$/i.test(name)
 
 export function thumbnailFor(fullPath, name) {

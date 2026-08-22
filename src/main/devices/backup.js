@@ -125,20 +125,29 @@ function Test-Copied($path, $expected) {
 # Progress is the deadline, not the clock: a long video over USB
 # legitimately takes minutes, so the wait only ends when the file stops
 # growing altogether.
-function Wait-Copy($path, $expected) {
+# Emits progress and nothing else: the verdict is taken from
+# Test-Copied afterwards, so this must not put a return value on the
+# pipeline where it would be read as an event.
+function Wait-Copy($path, $expected, $name) {
   $seen = -1
   $idle = 0
+  $tick = 0
 
   while ($idle -lt $STALL_LIMIT) {
-    if ($expected -gt 0 -and (Test-Copied $path $expected)) { return $true }
+    if ($expected -gt 0 -and (Test-Copied $path $expected)) { return }
 
     $size = Get-Size $path
     if ($size -gt $seen) { $seen = $size; $idle = 0 } else { $idle++ }
 
+    # One long video would otherwise leave the bar frozen for minutes,
+    # so the bytes already on disk are reported every few seconds.
+    $tick++
+    if (($tick % 8) -eq 0 -and $size -gt 0) {
+      Write-Output ('{"type":"progress","name":' + ($name | ConvertTo-Json) + ',"bytes":' + $size + '}')
+    }
+
     Start-Sleep -Milliseconds 500
   }
-
-  return (Test-Copied $path $expected)
 }
 
 $folderCache = @{}
@@ -174,7 +183,7 @@ foreach ($entry in $plan) {
       continue
     }
     $dest.CopyHere($item, 4 + 16 + 512 + 1024)
-    Wait-Copy $target $entry.size | Out-Null
+    Wait-Copy $target $entry.size $entry.name
   }
 
   if (Test-Copied $target $entry.size) {
@@ -320,6 +329,7 @@ export async function runBackup({ deviceName, libraryPath, quotaGB, usedGB, onPr
     return {
       copied: 0,
       skipped,
+      failed: 0,
       total,
       blocked: true,
       message:
@@ -329,7 +339,7 @@ export async function runBackup({ deviceName, libraryPath, quotaGB, usedGB, onPr
   }
 
   if (!plan.length) {
-    return { copied: 0, skipped, total, blocked: false, message: null }
+    return { copied: 0, skipped, failed: 0, total, blocked: false, message: null }
   }
 
   const planPath = join(tmpdir(), `photobase-plan-${Date.now()}.json`)
@@ -337,7 +347,23 @@ export async function runBackup({ deviceName, libraryPath, quotaGB, usedGB, onPr
   writeFileSync(planPath, JSON.stringify(plan), 'utf8')
 
   let copied = 0
+  let failed = 0
+  let copiedBytes = 0
+  /* Bytes of the file currently in flight, which only a big video makes
+     worth showing separately. */
+  let inFlight = 0
   const byName = new Map(plan.map((entry) => [entry.name, entry]))
+
+  /* Counted in bytes as well as files, because one 2 GB clip and one
+     2 MB photo are one file each and nothing like the same wait. */
+  const report = (name) =>
+    onProgress?.({
+      copied,
+      planned: plan.length,
+      name,
+      bytes: copiedBytes + inFlight,
+      totalBytes: plannedBytes,
+    })
 
   try {
     await powershell(COPY_SCRIPT, ['-DeviceName', deviceName, '-PlanPath', planPath], {
@@ -350,11 +376,29 @@ export async function runBackup({ deviceName, libraryPath, quotaGB, usedGB, onPr
           return
         }
 
+        if (event.type === 'progress') {
+          inFlight = Number(event.bytes) || 0
+          report(event.name)
+          return
+        }
+
         if (event.type === 'copied') {
           const entry = byName.get(event.name)
-          if (entry) recordCopy(index, { name: entry.name, size: entry.size }, entry.relative)
+          if (entry) {
+            recordCopy(index, { name: entry.name, size: entry.size }, entry.relative)
+            copiedBytes += entry.size
+          }
+          inFlight = 0
           copied += 1
-          onProgress?.({ copied, planned: plan.length, name: event.name })
+          report(event.name)
+          return
+        }
+
+        if (event.type === 'failed') {
+          inFlight = 0
+          failed += 1
+          logError('backup file failed', new Error(String(event.name)))
+          report(event.name)
         }
       },
     })
@@ -365,8 +409,8 @@ export async function runBackup({ deviceName, libraryPath, quotaGB, usedGB, onPr
     saveIndex(libraryPath, index)
   }
 
-  log('backup finished', { deviceName, copied, skipped, planned: plan.length })
-  return { copied, skipped, total, blocked: false, message: null }
+  log('backup finished', { deviceName, copied, skipped, failed, planned: plan.length })
+  return { copied, skipped, failed, total, blocked: false, message: null }
 }
 
 export const backupSupported = () => process.platform === 'win32' && Boolean(app)

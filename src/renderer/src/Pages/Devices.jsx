@@ -72,8 +72,8 @@ const Devices = () => {
       <BackupHistory refreshKey={backup.result} />
 
       <p className="mt-4 text-[13px] leading-relaxed text-ink-3">
-        PhotoBase copia las fotos a este equipo. Nunca se borra ni se mueve nada
-        del dispositivo: lo que hay en tu móvil se queda donde está.
+        PhotoBase copia las fotos y los vídeos a este equipo. Nunca se borra ni se
+        mueve nada del dispositivo: lo que hay en tu móvil se queda donde está.
       </p>
     </div>
   );
@@ -140,6 +140,14 @@ const BackupHistory = ({ refreshKey }) => {
   );
 };
 
+/* Videos put gigabytes on this screen, where photos only ever put
+   megabytes, so the unit follows the number. */
+const formatSize = (bytes) => {
+  const gb = bytes / 1024 ** 3;
+  if (gb >= 1) return `${gb.toLocaleString('es-ES', { maximumFractionDigits: 1 })} GB`;
+  return `${Math.max(1, Math.round(bytes / 1024 ** 2)).toLocaleString('es-ES')} MB`;
+};
+
 const BackupStatus = ({ backup }) => {
   const { running, progress, result, error } = backup;
 
@@ -156,16 +164,29 @@ const BackupStatus = ({ backup }) => {
        the scan rather than pretending to know the total. */
     const done = progress?.copied ?? 0;
     const planned = progress?.planned ?? 0;
-    const ratio = planned ? done / planned : 0;
+    const bytes = progress?.bytes ?? 0;
+    const totalBytes = progress?.totalBytes ?? 0;
+
+    /* Bytes drive the bar and files drive the caption: a run of photos
+       and a single long video are the same two files and nothing like
+       the same wait. */
+    const ratio = totalBytes
+      ? Math.min(1, bytes / totalBytes)
+      : planned
+        ? done / planned
+        : 0;
 
     return (
       <div className="glass mt-4 rounded-md px-5 py-4">
         <div className="flex items-baseline justify-between gap-3">
           <p className="text-[13px] text-ink">
-            {planned ? `Copiando ${done} de ${planned}` : 'Buscando fotos nuevas…'}
+            {planned ? `Copiando ${done} de ${planned}` : 'Buscando novedades…'}
           </p>
           {planned > 0 && (
-            <span className="eyebrow text-ink-3">{Math.round(ratio * 100)} %</span>
+            <span className="eyebrow text-ink-3">
+              {totalBytes > 0 && `${formatSize(bytes)} / ${formatSize(totalBytes)} · `}
+              {Math.round(ratio * 100)} %
+            </span>
           )}
         </div>
 
@@ -197,9 +218,18 @@ const BackupStatus = ({ backup }) => {
     return (
       <p className="glass mt-4 rounded-md px-5 py-4 text-[13px] leading-relaxed text-ink-2">
         {result.copied > 0
-          ? `Copiadas ${result.copied} fotos nuevas.`
+          ? result.copied === 1
+            ? 'Copiado 1 elemento nuevo.'
+            : `Copiados ${result.copied} elementos nuevos.`
           : 'Ya tenías todo copiado.'}
-        {result.skipped > 0 && ` Se omitieron ${result.skipped} que ya estaban.`}
+        {result.skipped > 0 &&
+          (result.skipped === 1
+            ? ' Se omitió 1 que ya estaba.'
+            : ` Se omitieron ${result.skipped} que ya estaban.`)}
+        {result.failed > 0 &&
+          (result.failed === 1
+            ? ' 1 no se pudo copiar del todo y se ha descartado; vuelve a intentarlo sin desconectar el móvil.'
+            : ` ${result.failed} no se pudieron copiar del todo y se han descartado; vuelve a intentarlo sin desconectar el móvil.`)}
       </p>
     );
   }
