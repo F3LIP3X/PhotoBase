@@ -55,6 +55,10 @@ const api = {
     playable: (path) => call('library:playable', path),
     playableUrl: (name) => `photobase://cache/${encodeURIComponent(name)}`,
 
+    reveal: (path) => call('library:reveal', path),
+    copyImage: (path) => call('library:copyImage', path),
+    copyPath: (path) => call('library:copyPath', path),
+
     /* Photos are served through a scheme that only reaches inside the
        library, so the renderer never handles filesystem paths. */
     url: (relativePath) =>

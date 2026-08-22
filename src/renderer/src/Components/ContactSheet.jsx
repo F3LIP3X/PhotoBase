@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PiStarFill, PiPlayFill, PiCheckBold, PiTrashBold } from 'react-icons/pi';
+import {
+  PiStarFill,
+  PiStar,
+  PiPlayFill,
+  PiCheckBold,
+  PiTrashBold,
+  PiEyeBold,
+  PiFolderOpenBold,
+  PiImageBold,
+  PiCopyBold,
+} from 'react-icons/pi';
+import ContextMenu from './ContextMenu';
 import Lightbox from './Lightbox';
 import { thumbUrl } from '../hooks/useLibrary';
 
@@ -42,6 +53,8 @@ const ContactSheet = ({ groups, library, chunkSize = CHUNK_SIZE }) => {
   const [open, setOpen] = useState(null);
   const [loaded, setLoaded] = useState(1);
   const [selecting, setSelecting] = useState(false);
+  const [menu, setMenu] = useState(null);
+  const [toast, setToast] = useState(null);
   const [selected, setSelected] = useState(() => new Set());
   /* Where the last plain click landed, so shift-click has something to
      reach back to. */
@@ -107,6 +120,68 @@ const ContactSheet = ({ groups, library, chunkSize = CHUNK_SIZE }) => {
   );
 
   const openAt = (photo) => setOpen(flat.findIndex((item) => item.path === photo.path));
+
+  /* Success is silent, the way a system "copy" is; failure is not, or a
+     HEIC that cannot be copied as an image just looks like nothing
+     happened. */
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const runAction = async (task) => {
+    try {
+      await task();
+    } catch (cause) {
+      setToast(cause?.message ?? 'No se pudo completar la acción.');
+    }
+  };
+
+  const openMenu = (photo, event) => {
+    event.preventDefault();
+    const api = globalThis.api?.library;
+    const favorite = library.isFavorite(photo.path);
+
+    setMenu({
+      x: event.clientX,
+      y: event.clientY,
+      items: [
+        { label: 'Abrir', icon: PiEyeBold, onSelect: () => openAt(photo) },
+        {
+          label: favorite ? 'Quitar de favoritos' : 'Añadir a favoritos',
+          icon: favorite ? PiStarFill : PiStar,
+          onSelect: () => library.toggleFavorite(photo.path),
+        },
+        { divider: true },
+        {
+          label: 'Mostrar en el explorador de archivos',
+          icon: PiFolderOpenBold,
+          disabled: !api,
+          onSelect: () => runAction(() => api.reveal(photo.path)),
+        },
+        {
+          label: 'Copiar imagen',
+          icon: PiImageBold,
+          disabled: !api || photo.kind === 'video',
+          onSelect: () => runAction(() => api.copyImage(photo.path)),
+        },
+        {
+          label: 'Copiar ruta del archivo',
+          icon: PiCopyBold,
+          disabled: !api,
+          onSelect: () => runAction(() => api.copyPath(photo.path)),
+        },
+        { divider: true },
+        {
+          label: 'Mover a la papelera',
+          icon: PiTrashBold,
+          danger: true,
+          onSelect: () => library.remove(photo.path),
+        },
+      ],
+    });
+  };
 
   const leaveSelection = () => {
     setSelecting(false);
@@ -206,6 +281,7 @@ const ContactSheet = ({ groups, library, chunkSize = CHUNK_SIZE }) => {
                 key={photo.path}
                 type="button"
                 onClick={(event) => pick(photo, event)}
+                onContextMenu={(event) => openMenu(photo, event)}
                 aria-pressed={selecting ? selected.has(photo.path) : undefined}
                 className={`group relative overflow-hidden rounded-sm bg-[var(--frame)] shadow-sm transition-[transform,box-shadow] duration-300 ease-glass hover:z-10 hover:scale-[1.04] ${
                   selecting && selected.has(photo.path)
@@ -274,6 +350,17 @@ const ContactSheet = ({ groups, library, chunkSize = CHUNK_SIZE }) => {
             <PiTrashBold />
             {working ? 'Moviendo…' : 'A la papelera'}
           </button>
+        </div>
+      )}
+
+      {menu && <ContextMenu {...menu} onClose={() => setMenu(null)} />}
+
+      {toast && (
+        <div
+          role="alert"
+          className="glass-media fixed left-1/2 top-6 z-50 max-w-sm -translate-x-1/2 rounded-full px-5 py-2.5 text-[13px] text-ink shadow-lg"
+        >
+          {toast}
         </div>
       )}
 

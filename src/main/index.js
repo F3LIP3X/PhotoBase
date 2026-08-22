@@ -1,4 +1,4 @@
-import { app, shell, dialog, BrowserWindow, ipcMain, Notification } from 'electron'
+import { app, shell, dialog, clipboard, nativeImage, BrowserWindow, ipcMain, Notification } from 'electron'
 import { join, resolve, sep, basename } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -176,6 +176,21 @@ function indexMetadataInBackground() {
   if (!libraryPath) return
 
   indexLibrary(libraryPath).catch((error) => logError('metadata index', error))
+}
+
+/* Every handler that touches a file by its relative path repeats this
+   same check, so a stray path segment cannot walk out of the library
+   through `..`. Centralised once here rather than four times. */
+function resolveInLibrary(relative) {
+  const { libraryPath } = readSettings()
+  if (!libraryPath || !relative) return null
+
+  const root = resolve(libraryPath)
+  const target = resolve(join(root, relative))
+  if (target !== root && !target.startsWith(root + sep)) {
+    throw new Error('Ese archivo no está en tu biblioteca.')
+  }
+  return target
 }
 
 /* A locked window must not be able to drive the library, or the lock
@@ -397,17 +412,57 @@ function registerSettingsHandlers() {
   ipcMain.handle(
     'library:open',
     guarded('library:open', async (_event, path) => {
-      const { libraryPath } = readSettings()
-      if (!libraryPath || !path) return false
-
-      const root = resolve(libraryPath)
-      const target = resolve(join(root, path))
-      if (target !== root && !target.startsWith(root + sep)) {
-        throw new Error('Ese archivo no está en tu biblioteca.')
-      }
+      const target = resolveInLibrary(path)
+      if (!target) return false
 
       const failure = await shell.openPath(target)
       if (failure) throw new Error(failure)
+      return true
+    }),
+  )
+
+  /* Selects the file in Explorer/Finder/the file manager rather than
+     opening it, so the user lands exactly where the file lives instead
+     of in whatever program owns the extension. */
+  ipcMain.handle(
+    'library:reveal',
+    guarded('library:reveal', (_event, path) => {
+      const target = resolveInLibrary(path)
+      if (!target) return false
+      shell.showItemInFolder(target)
+      return true
+    }),
+  )
+
+  /* Pixel data on the clipboard, the way a browser's own "copy image"
+     works — paste into Word, Discord, anywhere that accepts an image.
+     nativeImage does not decode HEIC, so that case fails with a message
+     rather than silently copying nothing. A real "copy as a file you can
+     paste into Explorer" would mean writing a Windows-specific CF_HDROP
+     clipboard format by hand; revealing the file and copying it there,
+     with the OS's own Ctrl+C, is the reliable version of that. */
+  ipcMain.handle(
+    'library:copyImage',
+    guarded('library:copyImage', (_event, path) => {
+      const target = resolveInLibrary(path)
+      if (!target) return false
+
+      const image = nativeImage.createFromPath(target)
+      if (image.isEmpty()) {
+        throw new Error('Este formato de imagen no se puede copiar directamente.')
+      }
+
+      clipboard.writeImage(image)
+      return true
+    }),
+  )
+
+  ipcMain.handle(
+    'library:copyPath',
+    guarded('library:copyPath', (_event, path) => {
+      const target = resolveInLibrary(path)
+      if (!target) return false
+      clipboard.writeText(target)
       return true
     }),
   )

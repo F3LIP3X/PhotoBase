@@ -1,4 +1,4 @@
-import { PiMagnifyingGlassBold, PiSlidersHorizontalBold } from 'react-icons/pi';
+import { PiMagnifyingGlassBold } from 'react-icons/pi';
 import ThemeToggle from './ThemeToggle';
 
 /* The query lives in the Shell, not here: this is where it is typed, but
@@ -37,9 +37,6 @@ const Toolbar = ({ title, subtitle, searchable, condensed, query, onQuery }) => 
 
     <div className={`flex items-center gap-1 ${searchable ? '' : 'ml-auto'}`}>
       <ThemeToggle />
-      <button type="button" aria-label="Ajustes de vista" className="control h-9 w-9">
-        <PiSlidersHorizontalBold />
-      </button>
     </div>
   </header>
 );
