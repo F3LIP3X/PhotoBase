@@ -1,5 +1,5 @@
 import { PiMagnifyingGlassBold } from 'react-icons/pi';
-import ThemeToggle from './ThemeToggle';
+import ThemeToggle from '../ui/ThemeToggle';
 
 /* The query lives in the Shell, not here: this is where it is typed, but
    the pages are what it filters. */

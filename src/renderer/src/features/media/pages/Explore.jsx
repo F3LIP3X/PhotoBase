@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PiCompassFill, PiCaretDownBold } from 'react-icons/pi';
-import ContactSheet from '../Components/ContactSheet';
-import EmptyState from '../Components/EmptyState';
-import { useShell } from '../hooks/useShell';
+import ContactSheet from '../components/ContactSheet';
+import EmptyState from '../components/EmptyState';
+import { useShell } from '../../../app/hooks/useShell';
 import { useLibrary } from '../hooks/useLibrary';
-import { formatSize } from '../format';
+import { formatSize } from '../../../shared/format';
 
 /* Explorar reads the library as it is on disk: every figure here is
    derived from the scan, so nothing can drift from reality. */

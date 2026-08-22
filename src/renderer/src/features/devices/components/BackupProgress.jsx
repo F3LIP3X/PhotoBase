@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PiCaretDownBold, PiListMagnifyingGlassBold } from 'react-icons/pi';
-import { formatSize } from '../format';
+import { formatSize } from '../../../shared/format';
 
 /* The progress panel, shared between the Devices page and the overlay
    that covers the app while a copy runs. One copy of this, so the two

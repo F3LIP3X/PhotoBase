@@ -1,19 +1,19 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import './Styles/index.css';
+import '../Styles/index.css';
 
-import { BackupProvider } from './hooks/useBackup';
-import Shell from './Components/Shell';
-import Welcome from './Welcome';
-import Setup from './Pages/Setup';
-import Lock from './Pages/Lock';
-import Photos from './Pages/Photos';
-import Explore from './Pages/Explore';
-import Favorites from './Pages/Favorites';
-import Devices from './Pages/Devices';
-import Trash from './Pages/Trash';
-import Settings from './Pages/Settings';
+import { BackupProvider } from '../features/devices/hooks/useBackup';
+import Shell from '../components/layout/Shell';
+import Welcome from '../features/settings/pages/Welcome';
+import Setup from '../features/settings/pages/Setup';
+import Lock from '../features/settings/pages/Lock';
+import Photos from '../features/media/pages/Photos';
+import Explore from '../features/media/pages/Explore';
+import Favorites from '../features/media/pages/Favorites';
+import Devices from '../features/devices/pages/Devices';
+import Trash from '../features/media/pages/Trash';
+import Settings from '../features/settings/pages/Settings';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

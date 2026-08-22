@@ -1,5 +1,5 @@
 import { PiSunFill, PiMoonFill } from 'react-icons/pi';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../../app/hooks/useTheme';
 
 const ThemeToggle = ({ className = '' }) => {
   const { theme, toggleTheme } = useTheme();

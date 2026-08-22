@@ -7,8 +7,8 @@ import {
   PiLockKeyFill,
   PiLockKeyOpenFill,
 } from 'react-icons/pi';
-import { useShell } from '../hooks/useShell';
-import { formatSize } from '../format';
+import { useShell } from '../../../app/hooks/useShell';
+import { formatSize } from '../../../shared/format';
 
 /* Colour follows the entity, not its size: Vídeos stays slot 3 whether it
    is the biggest bucket or the smallest, so the bar does not repaint

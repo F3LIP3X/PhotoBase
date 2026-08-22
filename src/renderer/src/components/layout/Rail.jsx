@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { SECTIONS } from '../navigation';
+import { SECTIONS } from '../../app/navigation';
 
 const Rail = () => {
   const { pathname } = useLocation();

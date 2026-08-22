@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PiShieldCheckFill, PiArrowRightBold } from 'react-icons/pi';
-import Mark from './Components/Mark';
-import ThemeToggle from './Components/ThemeToggle';
-import { useSettings } from './hooks/useSettings';
+import Mark from '../../../components/ui/Mark';
+import ThemeToggle from '../../../components/ui/ThemeToggle';
+import { useSettings } from '../hooks/useSettings';
 
 function Welcome() {
   const navigate = useNavigate();

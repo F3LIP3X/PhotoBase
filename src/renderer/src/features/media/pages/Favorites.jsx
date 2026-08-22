@@ -1,8 +1,8 @@
 import { useEffect, useMemo } from 'react';
 import { PiStarFill } from 'react-icons/pi';
-import ContactSheet from '../Components/ContactSheet';
-import EmptyState from '../Components/EmptyState';
-import { useShell } from '../hooks/useShell';
+import ContactSheet from '../components/ContactSheet';
+import EmptyState from '../components/EmptyState';
+import { useShell } from '../../../app/hooks/useShell';
 import { useLibrary } from '../hooks/useLibrary';
 import { filterGroups } from '../search';
 

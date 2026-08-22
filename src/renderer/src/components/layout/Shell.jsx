@@ -3,8 +3,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Rail from './Rail';
 import Toolbar from './Toolbar';
 import StoragePill from './StoragePill';
-import BackupOverlay from './BackupOverlay';
-import { findSection } from '../navigation';
+import BackupOverlay from '../../features/devices/components/BackupOverlay';
+import { findSection } from '../../app/navigation';
 
 const Shell = () => {
   const { pathname } = useLocation();

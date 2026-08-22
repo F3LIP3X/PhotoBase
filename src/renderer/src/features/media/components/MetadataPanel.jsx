@@ -6,7 +6,7 @@ import {
   PiArrowSquareOutBold,
   PiImageFill,
 } from 'react-icons/pi';
-import { formatSize } from '../format';
+import { formatSize } from '../../../shared/format';
 
 const TILE = 256;
 const ZOOM = 14;
