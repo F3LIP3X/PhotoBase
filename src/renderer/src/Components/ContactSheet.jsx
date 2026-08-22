@@ -200,26 +200,22 @@ const ContactSheet = ({ groups, library, pageSize = PAGE_SIZE }) => {
 
   return (
     <>
-      <div className="mb-4 flex items-center gap-3">
-        <span className="h-px flex-1 bg-[var(--glass-brd)]" />
-        {selecting ? (
-          <button
-            type="button"
-            onClick={leaveSelection}
-            className="eyebrow shrink-0 rounded-full border border-[var(--glass-brd)] px-4 py-1.5 text-ink-2 transition-colors duration-200 hover:border-accent hover:text-ink"
-          >
-            Cancelar
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setSelecting(true)}
-            className="eyebrow shrink-0 rounded-full border border-[var(--glass-brd)] px-4 py-1.5 text-ink-2 transition-colors duration-200 hover:border-accent hover:text-ink"
-          >
-            Seleccionar
-          </button>
-        )}
-      </div>
+      {/* Fixed to the viewport rather than the scroller, so it stays put
+          exactly where the hand expects it instead of drifting off with
+          the grid. Anchored clear of the rail (which ends at x≈92px), the
+          toolbar (full-width along the top) and the storage pill
+          (bottom-right), so nothing it can collide with. */}
+      <button
+        type="button"
+        onClick={() => (selecting ? leaveSelection() : setSelecting(true))}
+        aria-pressed={selecting}
+        className={`glass fixed bottom-6 left-[108px] z-30 flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-medium shadow-md transition-colors duration-200 ease-glass ${
+          selecting ? 'text-accent' : 'text-ink-2 hover:text-ink'
+        }`}
+      >
+        <PiCheckBold className={selecting ? 'text-accent' : 'text-ink-3'} />
+        {selecting ? 'Cancelar' : 'Seleccionar'}
+      </button>
 
       {paged.map((group) => (
         <section key={group.id} className="mb-10 last:mb-0">
