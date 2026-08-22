@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 const bridge = () => globalThis.api?.backup ?? null;
 const LOG_LIMIT = 80;
@@ -33,14 +41,54 @@ function describe(update) {
   return null;
 }
 
+/* The copy runs in the main process and outlives any screen, so its
+   state has to live above the router. Kept inside a page, it vanished the
+   moment the user changed tab — the copy carried on, but the app looked
+   like it had forgotten. */
+const BackupContext = createContext(null);
+
 export function useBackup() {
+  const value = useContext(BackupContext);
+  if (!value) throw new Error('useBackup necesita estar dentro de <BackupProvider>');
+  return value;
+}
+
+export function BackupProvider({ children }) {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(null);
   const [events, setEvents] = useState([]);
   const [startedAt, setStartedAt] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [deviceName, setDeviceName] = useState(null);
   const live = useRef(true);
+
+  /* A reload lands here with a copy already in flight, and main is the
+     only one that knows. */
+  useEffect(() => {
+    const api = bridge();
+    if (!api?.status) return undefined;
+
+    let alive = true;
+    api.status().then((state) => {
+      if (!alive || !state?.running) return;
+      setRunning(true);
+      setDeviceName(state.deviceName);
+      setStartedAt((current) => current ?? Date.now());
+    });
+
+    const unsubscribe = api.onState((state) => {
+      if (!alive) return;
+      setRunning(Boolean(state?.running));
+      setDeviceName(state?.deviceName ?? null);
+      if (state?.running) setStartedAt((current) => current ?? Date.now());
+    });
+
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     live.current = true;
@@ -78,6 +126,7 @@ export function useBackup() {
     setProgress(null);
     setEvents([]);
     setStartedAt(Date.now());
+    setDeviceName(deviceName);
 
     try {
       const outcome = await api.start(deviceName);
@@ -94,5 +143,10 @@ export function useBackup() {
 
   /* The log outlives the run on purpose: when something goes wrong, the
      last thing it was doing is the first thing worth reading. */
-  return { start, running, progress, events, startedAt, result, error };
+  const value = useMemo(
+    () => ({ start, running, deviceName, progress, events, startedAt, result, error }),
+    [start, running, deviceName, progress, events, startedAt, result, error],
+  );
+
+  return <BackupContext.Provider value={value}>{children}</BackupContext.Provider>;
 }
