@@ -9,6 +9,7 @@ import {
 import EmptyState from '../Components/EmptyState';
 import { useShell } from '../hooks/useShell';
 import { useDevices } from '../hooks/useDevices';
+import { useBackup } from '../hooks/useBackup';
 
 /* This screen backs a device up: it COPIES media onto this machine and
    never moves or deletes anything on the phone. Any future transfer
@@ -16,6 +17,7 @@ import { useDevices } from '../hooks/useDevices';
 const Devices = () => {
   const { setSubtitle } = useShell();
   const { devices, ready, refreshing, refresh, supported } = useDevices();
+  const backup = useBackup();
 
   useEffect(() => {
     if (!ready) {
@@ -59,9 +61,11 @@ const Devices = () => {
 
       <div className="flex flex-col gap-2">
         {devices.map((device) => (
-          <DeviceRow key={device.id} device={device} />
+          <DeviceRow key={device.id} device={device} backup={backup} />
         ))}
       </div>
+
+      <BackupStatus backup={backup} />
 
       <p className="mt-4 text-[13px] leading-relaxed text-ink-3">
         PhotoBase copia las fotos a este equipo. Nunca se borra ni se mueve nada
@@ -69,6 +73,73 @@ const Devices = () => {
       </p>
     </div>
   );
+};
+
+const BackupStatus = ({ backup }) => {
+  const { running, progress, result, error } = backup;
+
+  if (error) {
+    return (
+      <p className="mt-4 whitespace-pre-line rounded-md border border-accent-2 px-4 py-3 text-[13px] leading-relaxed text-ink-2">
+        {error}
+      </p>
+    );
+  }
+
+  if (running) {
+    /* Before the first file lands there is no count yet, so the bar shows
+       the scan rather than pretending to know the total. */
+    const done = progress?.copied ?? 0;
+    const planned = progress?.planned ?? 0;
+    const ratio = planned ? done / planned : 0;
+
+    return (
+      <div className="glass mt-4 rounded-md px-5 py-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[13px] text-ink">
+            {planned ? `Copiando ${done} de ${planned}` : 'Buscando fotos nuevas…'}
+          </p>
+          {planned > 0 && (
+            <span className="eyebrow text-ink-3">{Math.round(ratio * 100)} %</span>
+          )}
+        </div>
+
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--glass-brd)]">
+          <div
+            className={`h-full rounded-full bg-accent transition-[width] duration-300 ease-glass ${
+              planned ? '' : 'animate-pulse'
+            }`}
+            style={{ width: planned ? `${ratio * 100}%` : '100%' }}
+          />
+        </div>
+
+        {progress?.name && (
+          <p className="eyebrow mt-2 truncate text-ink-3">{progress.name}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (result) {
+    if (result.blocked) {
+      return (
+        <p className="mt-4 rounded-md border border-accent-2 px-4 py-3 text-[13px] leading-relaxed text-ink-2">
+          {result.message}
+        </p>
+      );
+    }
+
+    return (
+      <p className="glass mt-4 rounded-md px-5 py-4 text-[13px] leading-relaxed text-ink-2">
+        {result.copied > 0
+          ? `Copiadas ${result.copied} fotos nuevas.`
+          : 'Ya tenías todo copiado.'}
+        {result.skipped > 0 && ` Se omitieron ${result.skipped} que ya estaban.`}
+      </p>
+    );
+  }
+
+  return null;
 };
 
 const RefreshButton = ({ onClick, busy, subtle }) => (
@@ -87,8 +158,9 @@ const RefreshButton = ({ onClick, busy, subtle }) => (
   </button>
 );
 
-const DeviceRow = ({ device }) => {
+const DeviceRow = ({ device, backup }) => {
   const { name, kind, mountPath, readable } = device;
+  const busy = backup.running;
   const Icon = kind === 'mtp' ? PiDeviceMobileFill : PiHardDriveFill;
 
   return (
@@ -111,9 +183,11 @@ const DeviceRow = ({ device }) => {
       {readable ? (
         <button
           type="button"
-          className="shrink-0 rounded-full bg-accent px-5 py-2 text-[13px] font-semibold text-accent-ink transition-opacity duration-200 hover:opacity-90"
+          disabled={busy}
+          onClick={() => backup.start(name)}
+          className="shrink-0 rounded-full bg-accent px-5 py-2 text-[13px] font-semibold text-accent-ink transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
         >
-          Crear copia de seguridad
+          {busy ? 'Copiando…' : 'Crear copia de seguridad'}
         </button>
       ) : (
         <span className="eyebrow shrink-0 text-ink-3">Esperando acceso</span>
