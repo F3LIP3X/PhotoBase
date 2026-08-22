@@ -11,6 +11,8 @@ files:
   # Build-time only: none of this is read once the app is installed.
   - '!{tailwind.config.js,postcss.config.js,pnpm-workspace.yaml}'
   - '!{README.md,.mcp.json,.gitattributes}'
+  # README imagery: 5 MB of screenshots the installed app never opens.
+  - '!docs'
   - '!build/*'
 asarUnpack:
   - resources/**
