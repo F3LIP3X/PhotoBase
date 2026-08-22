@@ -11,6 +11,7 @@ import Explore from './Pages/Explore';
 import Favorites from './Pages/Favorites';
 import Devices from './Pages/Devices';
 import Trash from './Pages/Trash';
+import Settings from './Pages/Settings';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -25,6 +26,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/favoritos" element={<Favorites />} />
           <Route path="/dispositivos" element={<Devices />} />
           <Route path="/papelera" element={<Trash />} />
+          <Route path="/ajustes" element={<Settings />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/fotos" replace />} />

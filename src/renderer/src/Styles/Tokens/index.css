@@ -52,6 +52,19 @@
   /* A frame with no photo in it yet */
   --frame: rgba(10, 13, 20, 0.06);
 
+  /* Categorical slots for the storage breakdown. Assigned by entity and
+     never by rank, so a segment keeps its colour when the numbers
+     reorder. Stepped per theme and checked for colour-blind separation
+     against each surface rather than flipped automatically. The two
+     non-photo buckets are deliberately neutral: they are not categories
+     of picture. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-other: #9aa0aa;
+  --series-other-2: #c3c7cd;
+
   --scheme: light;
 }
 
@@ -82,6 +95,13 @@
   --grid-line: rgba(255, 255, 255, 0.045);
 
   --frame: rgba(255, 255, 255, 0.06);
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-other: #6b727d;
+  --series-other-2: #454a53;
 
   --scheme: dark;
 }

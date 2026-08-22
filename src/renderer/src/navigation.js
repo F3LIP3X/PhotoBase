@@ -4,6 +4,7 @@ import {
   PiStarFill,
   PiTrashFill,
   PiUsbFill,
+  PiGearFill,
 } from 'react-icons/pi';
 
 /* One source of truth for the rail and the toolbar. `searchable` marks
@@ -15,6 +16,7 @@ export const SECTIONS = [
   { path: '/favoritos', label: 'Favoritos', icon: PiStarFill, searchable: true },
   { path: '/dispositivos', label: 'Dispositivos', icon: PiUsbFill, searchable: false },
   { path: '/papelera', label: 'Papelera', icon: PiTrashFill, searchable: false },
+  { path: '/ajustes', label: 'Ajustes', icon: PiGearFill, searchable: false },
 ];
 
 export const findSection = (pathname) =>
