@@ -11,8 +11,9 @@ import {
   ensureLibraryFolder,
   suggestedLibraryPath,
 } from './settings'
-import { libraryUsage } from './library/usage'
+import { libraryUsage, libraryBreakdown } from './library/usage'
 import { runBackup } from './devices/backup'
+import { resetConfiguration, wipeLibrary } from './library/reset'
 import { scanLibrary, buildFacets } from './library/scan'
 import {
   readMeta,
@@ -259,6 +260,27 @@ function registerSettingsHandlers() {
   ipcMain.handle(
     'library:backups',
     handled('library:backups', () => readMeta(readSettings().libraryPath).backups),
+  )
+
+  ipcMain.handle(
+    'library:breakdown',
+    handled('library:breakdown', async () => {
+      const { libraryPath, quotaGB } = readSettings()
+      const { usedBytes, entries } = await libraryBreakdown(libraryPath)
+      return { usedBytes, entries, quotaGB }
+    }),
+  )
+
+  /* Both of these end with the app unconfigured, so the renderer sends
+     the user back to first-run setup afterwards. */
+  ipcMain.handle(
+    'settings:reset',
+    handled('settings:reset', () => resetConfiguration()),
+  )
+
+  ipcMain.handle(
+    'settings:wipe',
+    handled('settings:wipe', () => wipeLibrary()),
   )
 
   ipcMain.handle(

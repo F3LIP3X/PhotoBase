@@ -22,10 +22,15 @@ const api = {
     get: () => call('settings:get'),
     save: (patch) => call('settings:save', patch),
     pickFolder: () => call('settings:pickFolder'),
+
+    /* Reset leaves the photos alone; wipe is the one that does not. */
+    reset: () => call('settings:reset'),
+    wipe: () => call('settings:wipe'),
   },
 
   library: {
     usage: () => call('library:usage'),
+    breakdown: () => call('library:breakdown'),
     photos: () => call('library:photos'),
     facets: () => call('library:facets'),
     toggleFavorite: (path) => call('library:toggleFavorite', path),

@@ -1,5 +1,7 @@
 import { readdir, stat } from 'fs/promises'
 import { join } from 'path'
+import { scanLibrary } from './scan'
+import { readMeta, TRASH_DIR } from './meta'
 
 const GB = 1024 ** 3
 /* Walking a large library is expensive, and the quota pill asks for the
@@ -55,6 +57,52 @@ export async function libraryUsage(libraryPath) {
 
   const bytes = await inFlight
   return { usedBytes: bytes, usedGB: bytes / GB }
+}
+
+/* What the quota is actually being spent on. Derived from the same scan
+   the gallery reads, so the figures here can never disagree with the ones
+   on the Fotos screen. */
+export async function libraryBreakdown(libraryPath) {
+  if (!libraryPath) return { usedBytes: 0, entries: [] }
+
+  const { groups } = await scanLibrary(libraryPath)
+
+  const byCategory = new Map()
+  let countedBytes = 0
+
+  for (const group of groups) {
+    for (const photo of group.photos) {
+      const current = byCategory.get(photo.category) ?? { bytes: 0, count: 0 }
+      current.bytes += photo.size
+      current.count += 1
+      byCategory.set(photo.category, current)
+      countedBytes += photo.size
+    }
+  }
+
+  const { usedBytes } = await libraryUsage(libraryPath)
+  const trashBytes = await directorySize(join(libraryPath, TRASH_DIR))
+
+  const entries = [...byCategory.entries()]
+    .map(([label, value]) => ({ label, ...value }))
+    .sort((a, b) => b.bytes - a.bytes)
+
+  if (trashBytes > 0) {
+    entries.push({
+      label: 'Papelera',
+      bytes: trashBytes,
+      count: readMeta(libraryPath).trash.length,
+    })
+  }
+
+  /* Whatever the walk found that the gallery does not show: the index,
+     the metadata file, and any stray file dropped into the folder. The
+     usage figure is cached, so a small negative here is staleness rather
+     than an error. */
+  const other = usedBytes - countedBytes - trashBytes
+  if (other > 1024) entries.push({ label: 'Otros archivos', bytes: other, count: 0 })
+
+  return { usedBytes, entries }
 }
 
 /* Copying must stop at the cap rather than overrun it, so callers ask
