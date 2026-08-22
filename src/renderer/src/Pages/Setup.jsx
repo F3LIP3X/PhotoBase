@@ -14,6 +14,7 @@ function Setup() {
   const [folder, setFolder] = useState('');
   const [quota, setQuota] = useState('30');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!settings) return;
@@ -35,9 +36,13 @@ function Setup() {
     if (!canContinue) return;
 
     setSaving(true);
+    setError(null);
     try {
       await save({ libraryPath: folder.trim(), quotaGB: quotaValue });
       navigate('/fotos');
+    } catch (cause) {
+      /* Say what failed instead of leaving the button spinning. */
+      setError(cause?.message ?? 'No se pudo guardar la configuración.');
     } finally {
       setSaving(false);
     }
@@ -105,6 +110,12 @@ function Setup() {
             nuevas: nunca se borra nada por tu cuenta.
           </p>
         </label>
+
+        {error && (
+          <p className="mt-6 whitespace-pre-line rounded-sm border border-accent-2 px-4 py-3 text-[13px] leading-relaxed text-ink-2">
+            {error}
+          </p>
+        )}
 
         <button
           type="submit"

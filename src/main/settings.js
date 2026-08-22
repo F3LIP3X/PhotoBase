@@ -1,5 +1,5 @@
 import { app, dialog } from 'electron'
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs'
 import { join } from 'path'
 
 /* Settings live beside the app's own data, never inside the library
@@ -62,8 +62,47 @@ export async function pickLibraryFolder(parentWindow) {
   return result.filePaths[0]
 }
 
+/* Windows Defender's "Controlled folder access" guards Pictures,
+   Documents, Videos and Music by default. It denies the write without
+   asking, so the app has to recognise the refusal and say what to do —
+   otherwise the user just sees a folder that never appears. */
+function describeFolderFailure(path, error) {
+  const denied = error?.code === 'EPERM' || error?.code === 'EACCES'
+  if (!denied) {
+    return `No se pudo crear la carpeta: ${error?.message ?? error}`
+  }
+
+  return (
+    `Windows ha bloqueado la creación de «${path}».\n\n` +
+    'Suele ser el «Acceso controlado a carpetas» de Seguridad de Windows, ' +
+    'que protege Imágenes, Documentos, Vídeos y Música.\n\n' +
+    'Puedes elegir otra carpeta fuera de esas (por ejemplo D:\\PhotoBase), ' +
+    'o permitir PhotoBase en Seguridad de Windows → Protección antivirus y ' +
+    'contra amenazas → Acceso controlado a carpetas → Permitir una aplicación.'
+  )
+}
+
 /* Called once the user commits to a library location. */
 export function ensureLibraryFolder(path) {
-  if (!existsSync(path)) mkdirSync(path, { recursive: true })
+  try {
+    if (!existsSync(path)) mkdirSync(path, { recursive: true })
+  } catch (error) {
+    throw new Error(describeFolderFailure(path, error))
+  }
+
+  /* A silent denial can leave mkdir looking successful, so confirm the
+     folder is really there and really writable before promising it. */
+  if (!existsSync(path)) {
+    throw new Error(describeFolderFailure(path, { code: 'EPERM' }))
+  }
+
+  try {
+    const probe = join(path, '.photobase-write-test')
+    writeFileSync(probe, '', 'utf8')
+    rmSync(probe, { force: true })
+  } catch (error) {
+    throw new Error(describeFolderFailure(path, error))
+  }
+
   return path
 }
