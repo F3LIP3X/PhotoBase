@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Rail from './Rail';
 import Toolbar from './Toolbar';
@@ -9,8 +9,15 @@ const Shell = () => {
   const { pathname } = useLocation();
   const [condensed, setCondensed] = useState(false);
   const [subtitle, setSubtitle] = useState('');
+  const [query, setQuery] = useState('');
 
   const section = findSection(pathname);
+
+  /* A filter that survived a change of section would silently hide half
+     the library on a screen the user never typed into. */
+  useEffect(() => {
+    setQuery('');
+  }, [pathname]);
 
   return (
     <div className="relative h-screen overflow-hidden">
@@ -26,7 +33,7 @@ const Shell = () => {
         className="scroll-thin absolute inset-0 z-10 overflow-y-auto"
       >
         <div className="pb-28 pl-[108px] pr-6 pt-[104px]">
-          <Outlet context={{ setSubtitle }} />
+          <Outlet context={{ setSubtitle, query }} />
         </div>
       </main>
 
@@ -36,6 +43,8 @@ const Shell = () => {
         subtitle={subtitle}
         searchable={section?.searchable ?? false}
         condensed={condensed}
+        query={query}
+        onQuery={setQuery}
       />
       <StoragePill />
     </div>
