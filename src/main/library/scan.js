@@ -1,6 +1,6 @@
 import { readdir, stat } from 'fs/promises'
 import { join } from 'path'
-import { isMediaFile } from '../devices/androidLayout'
+import { isMediaFile, isVideoFile } from '../devices/androidLayout'
 
 /* The library is laid out as YYYY/MM/file, which means the folder tree
    itself carries the dates — no database needed to group by month. */
@@ -70,6 +70,9 @@ export async function scanLibrary(libraryPath) {
              protocol, favourites and the trash all key off it. */
           path: `${year}/${month}/${entry.name}`,
           name: entry.name,
+          /* Decided here rather than re-guessed from the filename in
+             every component that renders one. */
+          kind: isVideoFile(entry.name) ? 'video' : 'image',
           size,
           takenAt: timeFromName(entry.name, year, month),
         })
@@ -107,16 +110,19 @@ export function buildFacets(groups) {
     for (const photo of group.photos) {
       bytes += photo.size
 
-      /* Android names its captures by origin: PXL_ from the camera,
-         Screenshot_ from the screen. That is the closest thing to a
-         "kind" available without opening every file. */
-      const kind = /^PXL_/i.test(photo.name)
-        ? 'Cámara'
-        : /^Screenshot/i.test(photo.name)
-          ? 'Capturas'
-          : /\.(mp4|mov|m4v|3gp)$/i.test(photo.name)
-            ? 'Vídeos'
-            : 'Otras'
+      /* Video wins over origin, because a camera clip is a video first
+         and a PXL_ capture second. Beyond that, Android names its files
+         by where they came from: PXL_ from the camera, Screenshot_ from
+         the screen — the closest thing to a kind without opening every
+         file. */
+      const kind =
+        photo.kind === 'video'
+          ? 'Vídeos'
+          : /^Screenshot/i.test(photo.name)
+            ? 'Capturas'
+            : /^PXL_/i.test(photo.name)
+              ? 'Cámara'
+              : 'Otras'
 
       byKind.set(kind, (byKind.get(kind) ?? 0) + 1)
     }

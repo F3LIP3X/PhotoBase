@@ -47,26 +47,24 @@ export const isExcludedFolder = (name) =>
 export const isExcludedPath = (path) =>
   String(path ?? '').split('/').some(isExcludedFolder)
 
-/* Extensions worth backing up. HEIC is the Pixel/iPhone default, DNG the
-   raw format, MP4/MOV the video companions of a camera roll. */
-const MEDIA_EXTENSIONS = new Set([
-  'jpg',
-  'jpeg',
-  'png',
-  'heic',
-  'heif',
-  'webp',
-  'dng',
-  'raw',
-  'gif',
-  'mp4',
-  'mov',
-  'm4v',
-  '3gp',
-])
+/* HEIC is the Pixel/iPhone default and DNG the raw format. */
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'dng', 'raw', 'gif']
 
-export function isMediaFile(name) {
-  const dot = name.lastIndexOf('.')
-  if (dot < 1) return false
-  return MEDIA_EXTENSIONS.has(name.slice(dot + 1).toLowerCase())
+/* MP4 and MOV come off the camera; MKV and WEBM arrive from screen
+   recorders and downloads, and a backup that skipped them would leave
+   holes the user cannot see until the phone is gone. */
+const VIDEO_EXTENSIONS = ['mp4', 'mov', 'm4v', '3gp', 'mkv', 'webm']
+
+const MEDIA = new Set([...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS])
+const VIDEO = new Set(VIDEO_EXTENSIONS)
+
+export function extensionOf(name) {
+  const dot = String(name ?? '').lastIndexOf('.')
+  return dot < 1 ? '' : name.slice(dot + 1).toLowerCase()
 }
+
+export const isMediaFile = (name) => MEDIA.has(extensionOf(name))
+
+/* The single answer to "is this a video", so the grid, the viewer and
+   the facets cannot drift apart on it. */
+export const isVideoFile = (name) => VIDEO.has(extensionOf(name))

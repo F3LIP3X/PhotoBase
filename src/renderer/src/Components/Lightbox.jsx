@@ -10,8 +10,6 @@ import {
 } from 'react-icons/pi';
 import { mediaUrl } from '../hooks/useLibrary';
 
-const isVideo = (name) => /\.(mp4|mov|m4v|3gp)$/i.test(name);
-
 /* Photos open here rather than in the Windows viewer: the library is the
    app's, and handing the file to another program loses the favourite and
    delete actions that belong beside it. */
@@ -88,7 +86,7 @@ const Lightbox = ({ photos, index, onClose, onMove, favorite, onToggleFavorite, 
           <PiCaretLeftBold />
         </button>
 
-        {isVideo(photo.name) ? (
+        {photo.kind === 'video' ? (
           <video
             key={photo.path}
             src={mediaUrl(photo.path)}

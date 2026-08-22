@@ -3,7 +3,9 @@ import { PiStarFill, PiPlayFill } from 'react-icons/pi';
 import Lightbox from './Lightbox';
 import { thumbUrl } from '../hooks/useLibrary';
 
-const isVideo = (name) => /\.(mp4|mov|m4v|3gp)$/i.test(name);
+/* The kind travels with the photo from the library scan, so the grid
+   never has to read a filename to know what it is holding. */
+const extensionOf = (name) => name.slice(name.lastIndexOf('.') + 1).toUpperCase();
 
 const ContactSheet = ({ groups, library }) => {
   const [open, setOpen] = useState(null);
@@ -46,16 +48,25 @@ const ContactSheet = ({ groups, library }) => {
                 onClick={() => openAt(photo)}
                 className="group relative overflow-hidden rounded-sm bg-[var(--frame)] shadow-sm transition-transform duration-300 ease-glass hover:z-10 hover:scale-[1.04]"
               >
-                <img
-                  src={thumbUrl(photo.path)}
-                  alt={photo.name}
-                  loading="lazy"
-                  className="h-full w-full object-cover"
-                />
+                {photo.kind === 'video' ? (
+                  /* A video has no still to show without a decoder, so the
+                     tile says what it is instead of pointing an <img> at an
+                     .mp4 and rendering a broken frame. */
+                  <span className="flex h-full w-full items-center justify-center bg-[var(--frame)]">
+                    <PiPlayFill className="text-[20px] text-ink-3 transition-colors duration-300 ease-glass group-hover:text-accent" />
+                  </span>
+                ) : (
+                  <img
+                    src={thumbUrl(photo.path)}
+                    alt={photo.name}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
+                )}
 
-                {isVideo(photo.name) && (
-                  <span className="absolute bottom-1.5 left-1.5 text-white drop-shadow">
-                    <PiPlayFill />
+                {photo.kind === 'video' && (
+                  <span className="eyebrow absolute bottom-1 left-1.5 text-[9px] text-ink-3">
+                    {extensionOf(photo.name)}
                   </span>
                 )}
 
