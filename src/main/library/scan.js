@@ -37,6 +37,18 @@ function timeFromName(name, year, month) {
   return new Date(`${year}-${month}-01T00:00:00`).getTime()
 }
 
+/* Android names its files by where they came from: PXL_ from the camera,
+   Screenshot_ from the screen — the closest thing to a kind without
+   opening every file. Video wins over origin, because a camera clip is a
+   video first and a PXL_ capture second. Decided here so the grid, the
+   facets and the filters cannot disagree about it. */
+function categoryOf(name, kind) {
+  if (kind === 'video') return 'Vídeos'
+  if (/^Screenshot/i.test(name)) return 'Capturas'
+  if (/^PXL_/i.test(name)) return 'Cámara'
+  return 'Otras'
+}
+
 export async function scanLibrary(libraryPath) {
   if (!libraryPath) return { groups: [], total: 0 }
 
@@ -65,6 +77,8 @@ export async function scanLibrary(libraryPath) {
           continue
         }
 
+        const kind = isVideoFile(entry.name) ? 'video' : 'image'
+
         photos.push({
           /* Relative path is the identity used everywhere: the media
              protocol, favourites and the trash all key off it. */
@@ -72,7 +86,8 @@ export async function scanLibrary(libraryPath) {
           name: entry.name,
           /* Decided here rather than re-guessed from the filename in
              every component that renders one. */
-          kind: isVideoFile(entry.name) ? 'video' : 'image',
+          kind,
+          category: categoryOf(entry.name, kind),
           size,
           takenAt: timeFromName(entry.name, year, month),
         })
@@ -109,38 +124,31 @@ export function buildFacets(groups) {
 
     for (const photo of group.photos) {
       bytes += photo.size
-
-      /* Video wins over origin, because a camera clip is a video first
-         and a PXL_ capture second. Beyond that, Android names its files
-         by where they came from: PXL_ from the camera, Screenshot_ from
-         the screen — the closest thing to a kind without opening every
-         file. */
-      const kind =
-        photo.kind === 'video'
-          ? 'Vídeos'
-          : /^Screenshot/i.test(photo.name)
-            ? 'Capturas'
-            : /^PXL_/i.test(photo.name)
-              ? 'Cámara'
-              : 'Otras'
-
-      byKind.set(kind, (byKind.get(kind) ?? 0) + 1)
+      byKind.set(photo.category, (byKind.get(photo.category) ?? 0) + 1)
     }
   }
 
-  const toEntries = (map) =>
+  /* Each entry carries what it selects, not just what it says. That is
+     what lets Explorar open a facet and show the photos behind it
+     without re-deriving the grouping rules on the other side. */
+  const toEntries = (map, field) =>
     [...map.entries()]
-      .map(([label, count]) => ({ label, count }))
+      .map(([value, count]) => ({ label: value, value, count, field }))
       .sort((a, b) => b.count - a.count)
 
   return {
     bytes,
     facets: [
-      { title: 'Por año', entries: toEntries(byYear) },
-      { title: 'Por tipo', entries: toEntries(byKind) },
+      { title: 'Por año', entries: toEntries(byYear, 'year') },
+      { title: 'Por tipo', entries: toEntries(byKind, 'category') },
       {
         title: 'Por mes',
-        entries: groups.map((group) => ({ label: group.label, count: group.count })),
+        entries: groups.map((group) => ({
+          label: group.label,
+          value: group.id,
+          count: group.count,
+          field: 'group',
+        })),
       },
     ],
   }
