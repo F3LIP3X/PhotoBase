@@ -14,6 +14,7 @@ import {
 import { libraryUsage, libraryBreakdown } from './library/usage'
 import { runBackup } from './devices/backup'
 import { resetConfiguration, wipeLibrary } from './library/reset'
+import { metadataFor, indexLibrary } from './library/metadata'
 import { scanLibrary, buildFacets } from './library/scan'
 import {
   readMeta,
@@ -114,6 +115,16 @@ function registerDeviceHandlers() {
   )
 }
 
+/* Reading EXIF off a whole library takes a while, so nothing waits on it:
+   the index fills in behind the UI, and every file it finishes is saved as
+   it goes. A partial index is still a useful one. */
+function indexMetadataInBackground() {
+  const { libraryPath } = readSettings()
+  if (!libraryPath) return
+
+  indexLibrary(libraryPath).catch((error) => logError('metadata index', error))
+}
+
 function registerSettingsHandlers() {
   ipcMain.handle(
     'settings:get',
@@ -198,6 +209,10 @@ function registerSettingsHandlers() {
           })
         }
 
+        /* Newly copied files have no metadata read yet, and search is
+           only as good as the index behind it. */
+        if (outcome.copied > 0) indexMetadataInBackground()
+
         return outcome
       } finally {
         watcher?.resume()
@@ -263,6 +278,14 @@ function registerSettingsHandlers() {
   )
 
   ipcMain.handle(
+    'library:metadata',
+    handled('library:metadata', (_event, path, kind) => {
+      const { libraryPath } = readSettings()
+      return metadataFor(libraryPath, path, kind)
+    }),
+  )
+
+  ipcMain.handle(
     'library:breakdown',
     handled('library:breakdown', async () => {
       const { libraryPath, quotaGB } = readSettings()
@@ -310,6 +333,7 @@ app.whenReady().then(() => {
   registerSettingsHandlers()
   registerDeviceHandlers()
   createWindow()
+  indexMetadataInBackground()
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

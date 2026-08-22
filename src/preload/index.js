@@ -31,6 +31,7 @@ const api = {
   library: {
     usage: () => call('library:usage'),
     breakdown: () => call('library:breakdown'),
+    metadata: (path, kind) => call('library:metadata', path, kind),
     photos: () => call('library:photos'),
     facets: () => call('library:facets'),
     toggleFavorite: (path) => call('library:toggleFavorite', path),
