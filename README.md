@@ -195,6 +195,5 @@ abres el panel, no se hace ninguna petición de red.
 ---
 
 <div align="center">
-<sub>Proyecto personal de <a href="https://github.com/F3LIP3X">F3LIP3X</a>.
-Las capturas usan imágenes generadas, no fotos reales.</sub>
+<sub>Proyecto personal de <a href="https://github.com/F3LIP3X">F3LIP3X</a>.</sub>
 </div>
