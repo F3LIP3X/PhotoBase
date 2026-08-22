@@ -145,6 +145,53 @@
     pointer-events: none;
   }
 
+  /* Chrome that sits over a photo needs its own glass. The app's is
+     tuned for the ambient background and vanishes against a bright
+     image, and a viewer's chrome stays dark in either theme — so the
+     ink tokens are re-pointed inside it and every child reads light
+     without knowing it is on an overlay. */
+  .glass-media {
+    --ink: #f5f7fa;
+    --ink-2: #ccd3de;
+    --ink-3: #949cab;
+    --glass-bg-strong: rgba(255, 255, 255, 0.14);
+
+    position: relative;
+    background: rgba(20, 22, 28, 0.52);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(190%);
+    backdrop-filter: blur(var(--blur)) saturate(190%);
+    box-shadow: var(--shadow-lg);
+    color: var(--ink);
+  }
+
+  /* Same specular top edge as .glass, tuned brighter: over a photo the
+     highlight is the only thing that says this surface is glass. */
+  .glass-media::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.38),
+      transparent 44%,
+      transparent 62%,
+      rgba(255, 255, 255, 0.09)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
   /* ---------- Controls ---------- */
   .control {
     display: flex;
@@ -216,5 +263,9 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass {
     background: var(--glass-bg-strong);
+  }
+
+  .glass-media {
+    background: rgba(20, 22, 28, 0.9);
   }
 }

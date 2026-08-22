@@ -12,6 +12,7 @@ import EmptyState from '../Components/EmptyState';
 import { useShell } from '../hooks/useShell';
 import { useDevices } from '../hooks/useDevices';
 import { useBackup } from '../hooks/useBackup';
+import { formatSize } from '../format';
 
 /* This screen backs a device up: it COPIES media onto this machine and
    never moves or deletes anything on the phone. Any future transfer
@@ -138,14 +139,6 @@ const BackupHistory = ({ refreshKey }) => {
       )}
     </section>
   );
-};
-
-/* Videos put gigabytes on this screen, where photos only ever put
-   megabytes, so the unit follows the number. */
-const formatSize = (bytes) => {
-  const gb = bytes / 1024 ** 3;
-  if (gb >= 1) return `${gb.toLocaleString('es-ES', { maximumFractionDigits: 1 })} GB`;
-  return `${Math.max(1, Math.round(bytes / 1024 ** 2)).toLocaleString('es-ES')} MB`;
 };
 
 const BackupStatus = ({ backup }) => {
