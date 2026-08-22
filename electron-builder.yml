@@ -18,6 +18,9 @@ asarUnpack:
   - resources/**
 win:
   executableName: PhotoBase
+  # Only this platform's ffmpeg: the other one is 79 MB of dead weight.
+  files:
+    - '!resources/ffmpeg/ffmpeg-linux-x64'
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -26,5 +29,7 @@ nsis:
 mac:
   target: dmg
 linux:
+  files:
+    - '!resources/ffmpeg/ffmpeg-win32-x64.exe'
   target: AppImage
   category: Graphics
