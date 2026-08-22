@@ -13,6 +13,17 @@ import {
 } from './settings'
 import { libraryUsage } from './library/usage'
 import { runBackup } from './devices/backup'
+import { scanLibrary, buildFacets } from './library/scan'
+import {
+  readMeta,
+  toggleFavorite,
+  moveToTrash,
+  restoreFromTrash,
+  emptyTrash,
+  trashWithCountdown,
+  recordBackup,
+} from './library/meta'
+import { registerMediaScheme, handleMediaRequests } from './library/protocol'
 import { log, logError, installCrashHandlers, handled } from './log'
 
 const DEVICES_CHANNEL = 'devices:changed'
@@ -166,7 +177,7 @@ function registerSettingsHandlers() {
          running them together is what froze the app before. */
       watcher?.pause()
       try {
-        return await runBackup({
+        const outcome = await runBackup({
           deviceName,
           libraryPath,
           quotaGB,
@@ -175,10 +186,79 @@ function registerSettingsHandlers() {
             if (!sender.isDestroyed()) sender.send(BACKUP_CHANNEL, progress)
           },
         })
+
+        /* Every run is recorded, including the ones that copied nothing:
+           "we checked and there was nothing new" is useful history. */
+        if (!outcome.blocked) {
+          recordBackup(libraryPath, {
+            deviceName,
+            copied: outcome.copied,
+            skipped: outcome.skipped,
+          })
+        }
+
+        return outcome
       } finally {
         watcher?.resume()
       }
     }),
+  )
+
+  ipcMain.handle(
+    'library:photos',
+    handled('library:photos', async () => {
+      const { libraryPath } = readSettings()
+      const { groups, total } = await scanLibrary(libraryPath)
+      const meta = readMeta(libraryPath)
+      return { groups, total, favorites: meta.favorites }
+    }),
+  )
+
+  ipcMain.handle(
+    'library:facets',
+    handled('library:facets', async () => {
+      const { libraryPath } = readSettings()
+      const { groups, total } = await scanLibrary(libraryPath)
+      return { ...buildFacets(groups), total }
+    }),
+  )
+
+  ipcMain.handle(
+    'library:toggleFavorite',
+    handled('library:toggleFavorite', (_event, path) => {
+      const { libraryPath } = readSettings()
+      return toggleFavorite(libraryPath, path)
+    }),
+  )
+
+  ipcMain.handle(
+    'library:delete',
+    handled('library:delete', (_event, path) => {
+      const { libraryPath } = readSettings()
+      return moveToTrash(libraryPath, path)
+    }),
+  )
+
+  ipcMain.handle(
+    'library:trash',
+    handled('library:trash', () => trashWithCountdown(readSettings().libraryPath)),
+  )
+
+  ipcMain.handle(
+    'library:restore',
+    handled('library:restore', (_event, stored) =>
+      restoreFromTrash(readSettings().libraryPath, stored),
+    ),
+  )
+
+  ipcMain.handle(
+    'library:emptyTrash',
+    handled('library:emptyTrash', () => emptyTrash(readSettings().libraryPath)),
+  )
+
+  ipcMain.handle(
+    'library:backups',
+    handled('library:backups', () => readMeta(readSettings().libraryPath).backups),
   )
 
   ipcMain.handle(
@@ -191,8 +271,12 @@ function registerSettingsHandlers() {
   )
 }
 
+/* Privileged schemes must be declared before the app is ready. */
+registerMediaScheme()
+
 app.whenReady().then(() => {
   installCrashHandlers()
+  handleMediaRequests()
   log('app ready', { version: app.getVersion(), platform: process.platform })
 
   electronApp.setAppUserModelId('com.photobase.app')

@@ -26,6 +26,19 @@ const api = {
 
   library: {
     usage: () => call('library:usage'),
+    photos: () => call('library:photos'),
+    facets: () => call('library:facets'),
+    toggleFavorite: (path) => call('library:toggleFavorite', path),
+    remove: (path) => call('library:delete', path),
+    trash: () => call('library:trash'),
+    restore: (stored) => call('library:restore', stored),
+    emptyTrash: () => call('library:emptyTrash'),
+    backups: () => call('library:backups'),
+
+    /* Photos are served through a scheme that only reaches inside the
+       library, so the renderer never handles filesystem paths. */
+    url: (relativePath) =>
+      `photobase://media/${relativePath.split('/').map(encodeURIComponent).join('/')}`,
   },
 
   backup: {
