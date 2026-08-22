@@ -1,7 +1,7 @@
 {
   "name": "photobase",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Local Electron photo manager",
   "author": "F3LIP3X",
   "type": "module",
