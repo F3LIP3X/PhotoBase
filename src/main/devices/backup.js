@@ -3,7 +3,12 @@ import { writeFileSync, mkdirSync, rmSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { app } from 'electron'
-import { DEFAULT_SOURCES, isMediaFile } from './androidLayout'
+import {
+  DEFAULT_SOURCES,
+  EXCLUDED_FOLDERS,
+  isExcludedPath,
+  isMediaFile,
+} from './androidLayout'
 import {
   loadIndex,
   saveIndex,
@@ -19,8 +24,14 @@ const GB = 1024 ** 3
    latter returns localised text ("3,45 MB") that cannot be parsed back
    into a number. */
 const SCAN_SCRIPT = `
-param([string]$DeviceName, [string]$Sources)
+param([string]$DeviceName, [string]$Sources, [string]$Excluded)
 $ErrorActionPreference = 'SilentlyContinue'
+
+$skip = @($Excluded -split ',' | Where-Object { $_ })
+
+# Capped rather than trusted: a device that reports a folder loop must
+# not turn the scan into an infinite one.
+$MAX_DEPTH = 8
 
 $shell = New-Object -ComObject Shell.Application
 $device = $shell.NameSpace(17).Items() | Where-Object { $_.Name -eq $DeviceName }
@@ -36,22 +47,36 @@ function Get-Sub($folder, $name) {
   return $hit.GetFolder
 }
 
+# Every folder under a source is descended into, because which subfolder
+# a camera app picks is its own business: Movies/Camera, DCIM/100ANDRO
+# and DCIM/OpenCamera are all somebody's default.
+function Walk($folder, $path, $found, $depth) {
+  if ($null -eq $folder -or $depth -gt $MAX_DEPTH) { return }
+
+  foreach ($item in $folder.Items()) {
+    if ($item.IsFolder) {
+      $name = $item.Name
+      if ($name.StartsWith('.') -or ($skip -contains $name)) { continue }
+      Walk $item.GetFolder "$path/$name" $found ($depth + 1)
+      continue
+    }
+
+    [void]$found.Add([pscustomobject]@{
+      source   = $path
+      name     = $item.Name
+      size     = [int64]$item.ExtendedProperty('Size')
+      modified = $item.ExtendedProperty('System.DateModified')
+    })
+  }
+}
+
 $found = New-Object System.Collections.ArrayList
 
 foreach ($src in ($Sources -split ',')) {
   $cur = $root
   foreach ($part in ($src -split '/')) { $cur = Get-Sub $cur $part }
   if ($null -eq $cur) { continue }
-
-  foreach ($item in $cur.Items()) {
-    if ($item.IsFolder) { continue }
-    [void]$found.Add([pscustomobject]@{
-      source   = $src
-      name     = $item.Name
-      size     = [int64]$item.ExtendedProperty('Size')
-      modified = $item.ExtendedProperty('System.DateModified')
-    })
-  }
+  Walk $cur $src $found 0
 }
 
 @($found) | ConvertTo-Json -Compress -Depth 3
@@ -232,7 +257,14 @@ function captureDate({ name, modified }) {
 
 /* Reads what is on the device and decides what is genuinely new. */
 export async function planBackup({ deviceName, libraryPath, quotaGB }) {
-  const raw = await powershell(SCAN_SCRIPT, ['-DeviceName', deviceName, '-Sources', DEFAULT_SOURCES.join(',')])
+  const raw = await powershell(SCAN_SCRIPT, [
+    '-DeviceName',
+    deviceName,
+    '-Sources',
+    DEFAULT_SOURCES.join(','),
+    '-Excluded',
+    EXCLUDED_FOLDERS.join(','),
+  ])
 
   let items = []
   try {
@@ -242,7 +274,9 @@ export async function planBackup({ deviceName, libraryPath, quotaGB }) {
     throw new Error('No se pudo leer el contenido del dispositivo.')
   }
 
-  const media = items.filter((item) => item?.name && isMediaFile(item.name))
+  const media = items.filter(
+    (item) => item?.name && isMediaFile(item.name) && !isExcludedPath(item.source),
+  )
   const index = loadIndex(libraryPath)
 
   const plan = []
