@@ -2,8 +2,8 @@ import exifr from 'exifr'
 import { app } from 'electron'
 import { readFileSync, writeFileSync, mkdirSync, statSync } from 'fs'
 import { join } from 'path'
-import { scanLibrary } from './scan'
-import { log, logError } from '../log'
+import { scanLibrary } from '../../library/scan'
+import { log, logError } from '../logging/file-logger'
 
 const CACHE_FILE = 'metadata.json'
 const VERSION = 1

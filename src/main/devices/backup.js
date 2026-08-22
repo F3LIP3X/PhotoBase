@@ -19,7 +19,7 @@ import {
   recordCopy,
   destinationFor,
 } from '../library/index-store'
-import { log, logError } from '../log'
+import { log, logError } from '../infrastructure/logging/file-logger'
 
 const GB = 1024 ** 3
 

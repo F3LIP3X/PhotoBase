@@ -1,6 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto'
 import { readSettings, writeSettings } from './settings'
-import { log } from './log'
+import { log } from './infrastructure/logging/file-logger'
 
 /* What this lock is, and what it is not.
  *

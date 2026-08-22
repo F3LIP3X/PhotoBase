@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, rmSync } from 'fs'
 import { join } from 'path'
 import { createHash } from 'crypto'
 import { statSync } from 'fs'
-import { log, logError } from '../log'
+import { log, logError } from '../logging/file-logger'
 
 const run = promisify(execFile)
 

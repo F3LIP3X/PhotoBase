@@ -4,7 +4,7 @@ import { join, resolve, parse } from 'path'
 import { readSettings, clearSettings } from '../settings'
 import { clearIndex } from './index-store'
 import { readMeta, writeMeta } from './meta'
-import { log } from '../log'
+import { log } from '../infrastructure/logging/file-logger'
 
 /* Two levels, deliberately far apart.
  *

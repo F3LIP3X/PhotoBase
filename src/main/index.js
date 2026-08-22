@@ -14,8 +14,8 @@ import {
 import { libraryUsage, libraryBreakdown } from './library/usage'
 import { runBackup } from './devices/backup'
 import { resetConfiguration, wipeLibrary } from './library/reset'
-import { metadataFor, indexLibrary, knownMetadata } from './library/metadata'
-import { playableFor, videoToolsReady } from './library/video'
+import { metadataFor, indexLibrary, knownMetadata } from './infrastructure/metadata/exif-reader'
+import { playableFor, videoToolsReady } from './infrastructure/ffmpeg/video'
 import { scanLibrary, buildFacets } from './library/scan'
 import {
   readMeta,
@@ -28,7 +28,7 @@ import {
   recordBackup,
 } from './library/meta'
 import { registerMediaScheme, handleMediaRequests } from './library/protocol'
-import { log, logError, installCrashHandlers, handled } from './log'
+import { log, logError, installCrashHandlers, handled } from './infrastructure/logging/file-logger'
 import { isUnlocked, unlock, lock, setPassword, clearPassword } from './auth'
 
 const DEVICES_CHANNEL = 'devices:changed'

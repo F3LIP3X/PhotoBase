@@ -1,4 +1,4 @@
-import { detectDevices } from './detectors'
+import { detectDevices } from '../infrastructure/mtp/detectors'
 
 const DEFAULT_INTERVAL_MS = 3000
 
