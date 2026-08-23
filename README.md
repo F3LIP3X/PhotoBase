@@ -151,24 +151,51 @@ ffmpeg (`pnpm fetch:ffmpeg`), que pesan unos 80 MB por plataforma y no viven en 
 pnpm dev      # Electron + Vite con recarga en caliente
 pnpm lint     # ESLint sobre todo el código
 pnpm build    # compila main, preload y renderer
+pnpm test     # Vitest — tests de dominio y de lógica pura
 ```
 
 **Requisitos:** Node.js 20 o superior y pnpm (`corepack enable`).
 
 ### Cómo está montado
 
+El proceso principal sigue una separación por capas: el dominio (reglas de negocio,
+sin tocar disco ni Electron) no sabe que existen PowerShell, FFmpeg ni la propia
+Electron; todo lo que sí lo sabe vive en infraestructura, detrás de una interfaz que
+el dominio declara y no implementa.
+
 ```
 src/
-  main/          Proceso principal: acceso al disco y al móvil
-    devices/     Detección MTP y copia por PowerShell + Shell COM
-    library/     Escaneo, miniaturas, metadatos, papelera, cuota
-  preload/       El único puente entre el renderer y el sistema
-  renderer/      React + Tailwind, tokens de diseño en Styles/Tokens
+  main/
+    domain/           Reglas puras: política de medios, planificación de
+                      destino AÑO/MES, rutas protegidas — cero E/S
+    application/      Casos de uso: orquestan dominio + infraestructura
+                      (por ejemplo, ejecutar una copia de seguridad completa)
+    infrastructure/   MTP, FFmpeg, EXIF, miniaturas, logging, notificaciones —
+                      todo lo que sabe qué sistema operativo pisa
+    ipc/              Un módulo por namespace (auth, settings, library,
+                      devices, backup); adaptadores finos, sin lógica propia
+    devices/, library/  Piezas más antiguas, algunas ya *shims* de compatibilidad
+                        hacia domain/ mientras dura la migración
+    index.js          Bootstrap solamente: crea la ventana, registra el IPC
+                      de cada namespace, arranca la app — nada más
+  preload/            El único puente entre el renderer y el sistema
+  renderer/src/
+    features/         Por dominio (media, devices, settings), no por tipo
+                      técnico — cada uno con sus páginas, componentes y hooks
+    components/       Cromo compartido: piezas de interfaz (ui/) y layout (layout/)
+    app/              Enrutado, arranque de React, estado transversal (tema)
+tests/
+  unit/               Dominio y lógica pura, sin E/S
+  integration/        Lo mismo, pero contra el filesystem real cuando hace falta
 ```
 
 El renderer nunca toca el disco. Pide todo por un puente estrecho que expone unas
 pocas llamadas concretas, y las fotos se sirven por un esquema propio (`photobase://`)
 que solo alcanza dentro de la carpeta de la biblioteca.
+
+Migración en curso hacia esta estructura: `devices/backup.js` es hoy el único módulo
+grande que todavía mezcla MTP/PowerShell, planificación y orquestación en un solo
+archivo — su comportamiento actual está congelado en `tests/` antes de tocarlo.
 
 ---
 
