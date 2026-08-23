@@ -55,7 +55,6 @@ const ContextMenu = ({ x, y, items, onClose }) => {
     >
       {items.map((item, at) =>
         item.divider ? (
-          // eslint-disable-next-line react/no-array-index-key
           <div key={`divider-${at}`} className="my-1.5 h-px bg-[var(--glass-brd)]" />
         ) : (
           <button

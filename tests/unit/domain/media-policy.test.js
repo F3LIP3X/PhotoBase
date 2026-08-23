@@ -7,7 +7,6 @@ import {
   extensionOf,
   MEDIA_EXTENSIONS,
   EXCLUDED_PATHS,
-  EXCLUDED_FOLDER_NAMES,
   DEFAULT_SOURCES,
 } from '../../../src/main/domain/devices/media-policy'
 import { isMediaFile as isMediaFileViaShim } from '../../../src/main/devices/androidLayout'

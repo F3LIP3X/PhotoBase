@@ -22,6 +22,11 @@ module.exports = {
       files: ['src/preload/**/*.js'],
       env: { node: true, browser: true },
     },
+    {
+      // Tests run under Node (Vitest), not the browser.
+      files: ['tests/**/*.js'],
+      env: { node: true, browser: false },
+    },
   ],
   rules: {
     'react/jsx-no-target-blank': 'off',
