@@ -13,10 +13,9 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "paths": {
-      "@renderer/*": ["src/renderer/src/*"],
-      "@contracts/*": ["src/contracts/*"]
+      "@renderer/*": ["./src/renderer/src/*"],
+      "@contracts/*": ["./src/contracts/*"]
     }
   },
   "include": ["src/**/*"],
